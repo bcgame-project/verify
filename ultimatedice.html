@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>UltimateDice verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/GoogleAnalytics.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+</head>
+<body>
+  
+<div id="app" class="main">
+  <h1 class="text-center pb-5">UltimateDice verify</h1> 
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center">Input</h2>
+    <div class="form-group">
+      <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control" placeholder="Client Seed">
+    </div>
+    <div class="form-group">
+      <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control" placeholder="Server Seed">
+    </div>
+    <div class="form-group">
+      <input :value="server_seed_hash" @change="server_seed_hash = $event.target.value" class="form-control" placeholder="Server Seed Hash">
+    </div>
+    <div class="form-group">
+      <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce">
+    </div>
+  </form>
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Output</h2>
+    <div class="form-group">
+      <label>sha256(server_seed)</label>
+      <input class="form-control" readonly :value="sha256(server_seed)">
+    </div>
+    <div class="form-group">
+      <label>hmac_sha256(client_seed:nonce, server_seed)</label>
+      <input class="form-control" readonly :value="result_hash">
+    </div>
+  </form>
+    <hr>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Results</h2>
+    <h5>Final Result</h5>
+    <h5>hmac_sha256(client_seed:nonce, server_seed)</h5>
+    <div class="form-group" style="overflow-x: auto;">
+      <table class="table table-sm table-bordered">
+        <tbody>
+          <tr>
+            <td v-for="(item, index) in results.dec" :key="index" :class="{'text-muted': index > 3}">{{ item }}</td>
+          </tr>
+          <tr>
+            <td v-for="(item, index) in results.hex" :key="index" :class="{'text-muted': index > 3}">{{ item }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h5>Bytes to Number</h5>
+    <div class="form-group">
+      ({{results.hex[0] + ', ' + results.hex[1] + ', ' + results.hex[2] + ', ' + results.hex[3]}}) -> [0, ... 4] = <span class="text-success">{{Math.floor(numResult * 10000)}}</span>
+      <div><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span> {{Number(results.hex[0] / 256).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[0]}} / (256 ^ 1))</span></div>
+      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[1] / (256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[1]}} / (256 ^ 2))</span></div>
+      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[2] / (256 * 256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[2]}} / (256 ^ 3))</span></div>
+      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[3] / (256 * 256 * 256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[3]}} / (256 ^ 4))</span></div>
+      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{(numResult * 10000).toFixed(6)}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>(* 10000)</div>
+      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="text-success">{{Math.floor(numResult * 10000)}}</span></div>
+    </div>
+  </form>
+</div>
+</body>
+<script>
+let qs = tools.queryString();
+var app = new Vue({
+  el: '#app',
+  data: {
+    /** inputs */
+    client_seed: qs.c || '',
+    server_seed: qs.s || '',
+    server_seed_hash: qs.h || '',
+    nonce: parseInt(qs.n) || 0,
+  },
+  computed: {
+    result_hash () {
+      return this.hmac_sha256(this.client_seed + ':' + this.nonce, this.server_seed);
+    },
+    result_hash_list () {
+      return String(this.result_hash)
+    },
+    results () {
+      let list = this.result_hash_list
+      let res = {
+        dec: [],
+        hex: []
+      }
+      for (let i = 0; i < list.length; i += 2) {
+        let dext = list[i] + list[i + 1]
+        let hext = parseInt(dext, 16)
+        res.dec.push(dext)  
+        res.hex.push(hext)
+      }
+      return res
+    },
+    numResult () {
+      let num = 0
+      let list = this.results.hex
+      for (let i = 0; i < 4; i++) {
+        num += list[i] / Math.pow(256, (i + 1))
+      }
+      return num.toFixed(9)
+    }
+  },
+  watch: {
+    'this.numResult'() {
+      ga('send', 'event', 'UltimateDice', 'verify', this.server_seed, {metric0: this.client_seed, metric1: this.nonce})
+    }
+  },
+  created () {
+    console.log(this.result_hash_list)
+  },
+  methods: {
+    hmac_sha256 (msg, salt) {
+      return CryptoJS.HmacSHA256(msg, salt);
+    },
+    sha512 (value) {
+      return CryptoJS.SHA512(CryptoJS.enc.Utf8.parse(value));
+    },
+    sha256 (value) {
+      return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(value));
+    },
+    parseInt (value) {
+      return window.parseInt(value, 16);
+    },
+  }
+});
+</script>
+</html>

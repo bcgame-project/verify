@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lottery verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/react.production.min.js"></script>
+  <script src="./lib/react-dom.production.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/hooks.js"></script>
+  <script src="./lib/babel.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    let qs = tools.queryString();
+    let { useEffect, useMemo } = React;
+    const { useSetState } = hooks;
+    function useInputControl (initState) {
+      const [state, setState] = useSetState(initState);
+      const bind = key => ({
+        value: state[key],
+        onChange: v => setState({[key]: v})
+      });
+      return [
+        state,
+        setState,
+        bind
+      ];
+    }
+    function Input ({value, onChange, ...others}) {
+      return (
+        <div class="form-group">
+          <input value={value}
+            onChange={e => onChange(e.target.value)}
+            class="form-control"
+            {...others}
+          />
+        </div>
+      );
+    }
+
+    function getRandomByHash (hash) {
+      return hash.match(/.{2}/g)
+        .map(it => parseInt(it, 16))
+        .reduce((res, it, i) => res + it/(256**(i+1)), 0);
+    }
+
+    function getBalls (hash) {
+      const remainingBalls = Array(36).fill(null).map((v, i) => i+1);
+      const balls = [];
+      for (let i=0; i<5; i++) {
+        const random = getRandomByHash(hash.substr(i*8, 8));
+        const ballIndex = Math.floor(random*remainingBalls.length);
+        
+        balls.push(remainingBalls.splice(ballIndex, 1)[0]);
+      }
+      const jackpot = Math.floor(getRandomByHash(hash.substr(5*8, 8)) * 10)+1;
+      return balls.concat(jackpot);
+    }
+    function Lottery () {
+      const [state, setState, bind] = useInputControl({
+        clientSeed: qs.c||'',
+        serverSeed: qs.s||'',
+      });
+
+      const result = useMemo(() => {
+        const serverSeedHash = tools.sha256(state.serverSeed);
+        const hash = String(CryptoJS.HmacSHA256(state.clientSeed, state.serverSeed));
+        const balls = getBalls(hash);
+        const numbers = balls.slice(0, 5);
+        const jackpot = balls[5];
+        return {
+          serverSeedHash,
+          hash,
+          numbers,
+          jackpot,
+        }
+      }, [state]);
+
+      return (
+        <div className="main">
+          <h1 className="text-center pb-5">Lottery verify</h1> 
+          <hr />
+          <h2 class="text-center">Input</h2>
+          <form className="py-5">
+            <Input placeholder="Server Seed" {...bind('serverSeed')} />
+            <Input placeholder="Client Seed (Hashed)" {...bind('clientSeed')} />
+          </form>
+          <h2 class="text-center">Output</h2>
+          <form className="py-5">
+            <Input placeholder="HmacSHA256(clientSeed, serverSeed)" readOnly value={result.hash} />
+            <Input placeholder="Numbers" readOnly value={result.numbers.join(', ')} />
+            <Input placeholder="Jackpot" readOnly value={result.jackpot} />
+          </form>
+        </div>
+      );
+    }
+    ReactDOM.render(<Lottery />, document.getElementById("app"));
+  </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Plinko verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/GoogleAnalytics.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+</head>
+<body>
+<div id="app" class="main">
+  <h1 class="text-center pb-5">Plinko verify</h1> 
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center">Input</h2>
+    <div class="form-group">
+      <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control" placeholder="Client Seed">
+    </div>
+    <div class="form-group">
+      <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control" placeholder="Server Seed">
+    </div>
+    <div class="form-group">
+      <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce">
+    </div>
+  </form>
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Output</h2>
+    <div class="form-group">
+      <label>sha256(server_seed)</label>
+      <input class="form-control" readonly :value="sha256(server_seed)">
+    </div>
+    <!-- difference -->
+    <div class="form-group">
+      <label>hmac_sha512(client_seed:nonce, server_seed)</label>
+      <input class="form-control" readonly :value="result_hash">
+    </div>
+    <!-- difference -->
+    <hr>
+    <h5>Convert each set of four bytes into a number</h3>
+    <div class="form-group" style="overflow-x: auto;">
+      <table style="width: 1200px;" class="table table-sm table-bordered">
+        <thead>
+          <tr>
+            <th>#</th>
+            <td v-for="(hex, index) in result_hash_list" :key="index">{{ index }}</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Hex</th>
+            <td v-for="(hex, index) in result_hash_list" :key="index">{{ hex }}</td>
+          </tr>
+          <tr>
+            <th>Base 10</th>
+            <td v-for="(hex, index) in result_hash_list" :key="index">{{ parseInt(hex) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <hr>
+    <h5>Each set of 4 bytes is turned into a number in the range [0, 1). Only the first calculation is displayed for conciceness.</h5>
+    <div>({{ parseInt(result_hash_list[0]) }}/256^1) + ({{ parseInt(result_hash_list[1]) }}/256^2) + ({{ parseInt(result_hash_list[2]) }}/256^3) + ({{ parseInt(result_hash_list[3]) }}/256^4)</div>
+    <div style="white-space: nowrap;">= ({{ parseInt(result_hash_list[0])/(256) }}) + ({{ parseInt(result_hash_list[1])/(256*256) }}) + ({{ parseInt(result_hash_list[2])/(256*256*256) }}) + ({{ parseInt(result_hash_list[0])/(256*256*256*256) }})</div>
+    <div>= ({{ parseInt(result_hash_list[0])/(256) + parseInt(result_hash_list[1])/(256*256) + parseInt(result_hash_list[2])/(256*256*256) + parseInt(result_hash_list[3])/(256*256*256*256) }})</div>
+  </form>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Results</h2>
+    <div class="form-group">
+      <table class="table table-sm table-bordered">
+        <thead>
+          <tr>
+            <th>Pin #</th>
+            <th>Number</th>
+            <th>Number*2</th>
+            <th>Direction</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(num, index) in results">
+            <td>{{ index+1 }}</td>
+            <td>{{ num }}</td>
+            <td>{{ num*2 }}</td>
+            <td>{{ num>.5?'Right':'Left' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+<script>
+  let qs = tools.queryString();
+  var app = new Vue({
+    el: '#app',
+    data: {
+      /** inputs */
+      client_seed: qs.c || '',
+      server_seed: qs.s || '',
+      server_seed_hash: qs.h || '',
+      nonce: parseInt(qs.n) || 0,
+    },
+    computed: {
+      result_hash () {
+        return this.hmac_sha512(this.client_seed + ":" + this.nonce, this.server_seed);
+      },
+      result_hash_list () {
+        return String(this.result_hash).match(/.{2}/g);
+      },
+      results () {
+        let res = [];
+        let hexArr = this.result_hash_list;
+        for (let i=0, l=hexArr.length; i<l; i+=4) {
+          let num = this.parseInt(hexArr[i])/Math.pow(256, 1) + this.parseInt(hexArr[i+1])/Math.pow(256,2) + this.parseInt(hexArr[i+2])/Math.pow(256,3) + this.parseInt(hexArr[i+3])/Math.pow(256,4)
+          res.push(num);
+        }
+        return res;
+      }
+    },
+    watch: {
+      'this.results'() {
+        ga('send', 'event', 'Plinko', 'verify', this.server_seed, {metric0: this.client_seed, metric1: this.nonce})
+      }
+    },
+    methods: {
+      round (index) {
+        return this.client_seed + ':' + this.nonce + ':' + index;
+      },
+      sha256 (value) {
+        return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(value));
+      },
+      sha512 (value) {
+        return CryptoJS.SHA512(CryptoJS.enc.Utf8.parse(value));
+      },
+      hmac_sha512 (msg, salt) {
+        return CryptoJS.HmacSHA512(msg, salt);
+      },
+      parseInt (value) {
+        return window.parseInt(value, 16);
+      }
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Blackjack Verify</title>
+  <link rel="stylesheet" href="./lib/highlight.css">
+  <script src="./lib/highlight.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <style>
+    body{
+      font-family: -apple-system,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","WenQuanYi Micro Hei","Microsoft Yahei",sans-serif;
+      font-size: 14px; color: #fff;
+      background-color: #202733;
+    }
+    :focus{
+      outline: none;
+    }
+    ::-webkit-scrollbar {
+      background-color:#303e56;
+      border-radius: 3px;
+      height: 6px;
+      width: 6px
+    }
+    ::-webkit-scrollbar-corner{
+      background-color: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #6c7d9b;
+      border-radius: 3px
+    }
+    input[type="text"]{
+      box-sizing: border-box; width: 260px;
+      border: 2px solid #F7BB0A;
+      background-color: transparent;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 3px;
+      line-height: 20px;
+    }
+    button{
+      box-sizing: border-box; width: 260px;
+      color: #fff;
+      background-color: #F7BB0A;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 3px;
+    }
+    .tc{
+      text-align: center;
+    }
+    .form-item{
+      margin: 16px 0;
+    }
+    .cardbox{
+      position: relative;
+      display: inline-block; width: 20px; height: 50px; padding: 15px 15px;
+    }
+    .card{
+      position: absolute; cursor: pointer;
+      width: 20px; height: 30px;
+      background-color: #e0e4eb;
+      border-radius: 2px;
+      line-height: 16px;
+      box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }
+    .cardbox.red{
+      color: #f00;
+    }
+    .cardbox.black{
+      color: #000;
+    }
+    .card .point{
+      position: absolute;
+      left: -2px; top: 0px; width: 20px;
+      text-align: center;
+    }
+    .card .flower{
+      position: absolute; bottom: 1px; right: 2px;
+      font-size: 20px;
+    }
+    .cardbox .index{
+      position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: #fff;
+      font-size: 12px; line-height: 20px;
+    }
+    .cardbox.active .card, .cardbox:hover .card{
+      transform: scale(2);
+    }
+    .cardbox.active .index, .cardbox:hover .index{
+      bottom: 0;
+    }
+    .script_box{
+    }
+    .script_box>code{
+      height: 100%;
+      box-sizing: border-box;
+    }
+    #form{
+      margin: 80px auto;
+    }
+    #cards{
+      clear: both;
+    }
+    #public_key{
+    }
+  </style>
+</head>
+<body>
+  <div id="form">
+    <div class="form-item tc">
+      <h3>Blackjack Verify</h3>
+    </div>
+    <div class="form-item tc">
+      <input id="signature" type="text" placeholder="Signature">
+      <input id="issus" style="width: 60px;" type="text" placeholder="Issus">
+    </div>
+    <div class="form-item tc">
+      <button id="button">Verify</button>
+    </div>
+  </div>
+  <div id="cards" class="form-item"></div>
+  <h2>Card generation algorithm</h2>
+  <pre class="script_box"><code id="card_script_clone" class="javascript"></code></pre>
+  <script>
+    let signature, issus, range, search = decodeURIComponent(window.location.search);
+    signature = search.match(/[\?|&]s=([^&]+)/);
+    signature = signature ? signature[1] : "";
+    issus = search.match(/[\?|&]i=([^&]+)/);
+    issus = issus ? issus[1] : "";
+    range = search.match(/[\?|&]range=([^&]+)/);
+    range = range
+      ?range[1].split(",").map(function(item){return parseInt(item);}) 
+      :null;
+  </script>
+  <script id="card_script">
+    (function(){
+      const CARDS = " ,A,2,3,4,5,6,7,8,9,10,J,Q,K".split(",");
+      const FLOWER = ["♠", "♥", "♣", "♦"];
+      let allCards = [];
+      const allCards1 = [];
+      const allCards2 = [161, 180, 199, 218, 162, 205, 181, 200, 219, 163, 182, 220, 201, 177, 196, 215, 170, 178, 221, 197, 216, 171, 179, 198, 172, 217, 193, 212, 167, 186, 194, 173, 213, 168, 187, 195, 214, 188, 169, 209, 164, 183, 202, 210, 189, 165, 184, 203, 211, 166, 204, 185];
+      for ( let c = 10; c <= 13; c++ ) {
+        for( let v = 1; v <= 13; v++ ) {
+          allCards1.push( c * 16 + v );
+        }
+      }
+
+      function createCards (hash, times, cards, hashList) {
+        hashList.push(hash);
+        if (times <= 0) return
+        let h = hash;
+        allCards.forEach((c) => {
+          cards.push({card: c, hash: h});
+          h = h.substring(1) + h.charAt(0);
+        });
+
+        hash = String(CryptoJS.SHA256(hash));
+        times--;
+        createCards(hash, times, cards, hashList);
+      }
+
+      function create (hash, times) {
+        times = times || 12;
+        let cards = [];
+        let hashList = [];
+        createCards(hash, times, cards, hashList);
+        cards.sort(function (o1, o2) {
+          if (o1.hash < o2.hash) {
+            return -1;
+          } else if (o1.hash == o2.hash) {
+            return 0;
+          } else {
+            return 1;
+          }
+        })
+        return cards;
+      }
+
+      function createCardFram (card, index) {
+        let flowerIndex = (card & 240) / 16 - 10;
+        let flower = FLOWER[flowerIndex];
+        let point = CARDS[card % 16];
+        let style = flowerIndex % 2 === 0 ? "black" : "red";
+        let classNames = ["cardbox", style];
+        if (range && index >= range[0] && index < range[1]) {
+          classNames.push("active");
+        }
+        return '<div class="'+classNames.join(" ")+'"><div class="card"><div class="flower">'
+          +flower+'</div><div class="point">'
+          +point+'</div></div><div class="index">'
+          +index+'</div></div>';
+      }
+
+      let $button = document.getElementById("button");
+      let $signature = document.getElementById("signature");
+      let $issus = document.getElementById("issus");
+      let $cards = document.getElementById("cards");
+
+      function generate () {
+        let beginHash = String(CryptoJS.SHA256($signature.value));
+        let list = create(beginHash);
+
+        let cardsfram = list.map(function (item, index) {
+          return createCardFram(item.card, index);
+        });
+        $cards.innerHTML = cardsfram.join('');
+      }
+
+      $button.addEventListener("click", function(){
+        let query = '?s=' + $signature.value + '&i=' + $issus.value;
+        location.replace(location.href.replace(/\?*.*$/, query));
+      }, false)
+
+      if (issus) {
+        $issus.value = issus;
+        allCards = parseInt(issus) > 50105 ? allCards2 : allCards1;
+      }
+
+      if (signature) {
+        $signature.value = signature;
+        generate();
+      }
+
+    })();
+  </script>
+  <h2>Signature verification</h2>
+  <pre class="script_box"><code id="seed_verify" class="bash">
+#!/bin/bash
+# Defining variables
+bj_issus='1'
+bj_slat='00000000000000000009e93621499e5a63d79a6293609ce52e95e93dd49cb1be'
+bj_signature='zXkrgsio9iqZOpgJ46US/3lUnlNVL7TNYoWo4Rn1XuG0b2KKse8IvFRrtW+VdKF9D97/SV3+vmQm6hFGoDjEYZOvHrsB83KOgzxo9Rb6lZ7r2lI9+jnPb4wIKsiRnRvAPcwyoTjwQZGxTFXG785JikvHgdhyKu9Y94HT/cBSN2I='
+# Save public key
+echo '-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDE9QKpw5CHZyf+OfcrT5MCeiCR
+CLVZjDVUSPGzwXdoGAcRi/r9y7T8t4/byXNTLky0h9dUGKBowwN7bt7fgMKvWAtz
+0Xf4ztfpsEoRHrzRs2r8khPUjihjrz0N+oPQ+ktAh7M95ZnQfgt/hNWFevGRd+SV
+sGsWhO8VFrBYb7nS8wIDAQAB
+-----END PUBLIC KEY-----' > pub.pem
+# Save signature
+base64 --decode <<<$bj_signature > signature.sign
+# HMAC slat and verify
+echo -n $bj_issus | openssl dgst -sha256 -hmac $bj_slat -binary | openssl dgst -sha256 -verify pub.pem -signature signature.sign
+  </code></pre>
+  <script>
+    (function(){
+      let clone = document.getElementById("card_script_clone");
+      let script = document.getElementById("card_script");
+      let seed_verify = document.getElementById("seed_verify");
+      seed_verify.innerHTML = seed_verify.innerHTML.replace(/issus\=\'[^']+\'/, "issus='"+issus+"'")
+        .replace(/signature\=\'[^']+\'/, "signature='"+signature+"'");
+      // hljs.highlightBlock(clone.children[0]);
+      clone.innerText = script.innerText;
+      hljs.initHighlightingOnLoad();
+      // hljs.configure({useBR: true});
+      // hljs.highlightBlock(clone);
+    })();
+  </script>
+</body>
+</html>

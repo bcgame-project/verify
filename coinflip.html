@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoinFLip Verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <style>
+    .round-item {
+      margin-bottom: 10px;
+    }
+    .round-item p {
+      margin: 4px 0;
+    }
+    .round-item .t{
+      font-weight: bold;
+    }
+    .table-wrap {
+      overflow-x: auto;
+    }
+    .round-item h6 {
+      margin: 0;
+      margin-bottom: 8px;
+    }
+  </style>
+  <script src="./lib/react.production.min.js"></script>
+  <script src="./lib/react-dom.production.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/hooks.js"></script>
+  <script src="./lib/babel.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    let qs = tools.queryString();
+    let { useEffect, useMemo } = React;
+    const { useSetState } = hooks;
+    function useInputControl (initState) {
+      const [state, setState] = useSetState(initState);
+      const bind = key => ({
+        value: state[key],
+        onChange: v => setState({[key]: v})
+      });
+      return [
+        state,
+        setState,
+        bind
+      ];
+    }
+    
+    function Input ({value, onChange, ...others}) {
+      return (
+        <div class="form-group">
+          <input value={value}
+            onChange={e => onChange(e.target.value)}
+            class="form-control"
+            {...others}
+          />
+        </div>
+      );
+    }
+
+    function getHashString (serverSeed, clientSeed, nonce, round) {
+      const resultArr = [clientSeed, nonce, round];
+      const hmacSha256Result = String(CryptoJS.HmacSHA256(resultArr.join(":"), serverSeed));
+      return hmacSha256Result;
+    }
+
+    function getHashResultNumber (hashResult) {
+      let res = {dec: [], hex: []};
+      for (let i = 0; i < hashResult.length; i += 2) {
+        let dext = hashResult[i] + hashResult[i + 1]
+        let hext = parseInt(dext, 16)
+        res.dec.push(dext)  
+        res.hex.push(hext)
+      }
+      return res;
+    }
+
+    function getResult (resultList) {
+      const firstStep = resultList[0]/(Math.pow(256, 1));
+      const secondStep = resultList[1]/(Math.pow(256, 2));
+      const thirdStep = resultList[2]/(Math.pow(256, 3));
+      const fourthStep = resultList[3]/(Math.pow(256, 4));
+      const resultStep = (firstStep + secondStep + thirdStep + fourthStep) * 2;
+      const result = Math.floor(resultStep);
+      return {
+        clscList: [firstStep.toFixed(9), secondStep.toFixed(9), thirdStep.toFixed(9), fourthStep.toFixed(9)],
+        resultStep: resultStep.toFixed(9),
+        result
+      }
+    }
+
+    function CoinFLip () {
+      const [state, setState, bind] = useInputControl({
+        clientSeed: qs.c||'',
+        serverSeed: qs.s||'',
+        nonce: parseInt(qs.n)||'',
+        round: parseInt(qs.r)||10
+      });
+      return (
+        <div className="main">
+          <h1 className="text-center pb-5">CoinFlip verify</h1> 
+          <hr />
+          <h2 class="text-center">Input</h2>
+          <form className="py-5">
+            <Input placeholder="Server Seed" {...bind('serverSeed')} />
+            <Input placeholder="Client Seed (Hashed)" {...bind('clientSeed')} />
+            <Input placeholder="Nonce" {...bind('nonce')} />
+            <Input placeholder="Rounds" {...bind('round')} />
+          </form>
+          <h2 class="text-center">Output</h2>
+          <form className="py-5">
+            {
+              Array(state.round).fill(1).map((item, index) => {
+                const hmacSha256Result = getHashString(state.serverSeed, state.clientSeed, state.nonce, index+1);
+                const resultList = getHashResultNumber(hmacSha256Result);
+                const finalResult = getResult(resultList.hex);
+                return (
+                  <div className="round-item" key={"round-" + index}>
+                    <p className="t">Round: {index + 1}</p>
+                    <p>hmac_sha256(client_seed:nonce:round, server_seed)</p>
+                    <div className="table-wrap">
+                      <table className="table table-sm table-bordered">
+                        <tbody>
+                          {[resultList.dec,resultList.hex].map((list, listIndex) => {
+                            return (
+                              <tr key={"tr-" + listIndex}>
+                                {list.map((item ,index) => {
+                                  return (
+                                    <td key={"td-" + index}>{item}</td>
+                                  )
+                                })}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <h6>Bytes to Number</h6>
+                    <div class="form-group">
+                      <div>{`(${resultList.hex[0]}, ${resultList.hex[1]}, ${resultList.hex[2]}, ${resultList.hex[3]}) -> [0, ... 4] = `}<span className="text-success">{finalResult.result}</span></div>
+                      <div><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span> {finalResult.clscList[0]}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({resultList.hex[0]} / (256 ^ 1))</span></div>
+                      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{finalResult.clscList[1]}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({resultList.hex[1]} / (256 ^ 2))</span></div>
+                      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{finalResult.clscList[2]}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({resultList.hex[2]} / (256 ^ 3))</span></div>
+                      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{finalResult.clscList[3]}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({resultList.hex[3]} / (256 ^ 4))</span></div>
+                      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{finalResult.resultStep}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>(* 2)</div>
+                      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span className="text-success">{finalResult.result}</span></div>
+                    </div>
+                    </div>
+                )
+              })
+            }
+          </form>
+        </div>
+      );
+    }
+    
+    ReactDOM.render(<CoinFLip />, document.getElementById("app"));
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+.main{
+  width: 800px; margin: 50px auto;
+}
+
+.cardbox.red{
+  color: #f00;
+}
+.cardbox.black{
+  color: #000;
+}
+#cards{
+  clear: both;
+}
+.card .point{
+  position: absolute;
+  left: 0px; top: 2px; width: 20px;
+  text-align: center;
+}
+.card .flower{
+  position: absolute; bottom: 20px; right: 10px;
+  font-size: 30px;
+}
+.cardbox .index{
+  position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: #fff;
+  font-size: 12px; line-height: 20px;
+}
+.cardbox.active .card, .cardbox:hover .card{
+  transform: scale(2);
+}
+.cardbox.active .index, .cardbox:hover .index{
+  bottom: 0;
+}
+
+.cardbox{
+  position: relative;
+  display: inline-block; height: 80px; padding: 15px 15px;
+}
+.card{
+  position: absolute; cursor: pointer;
+  width: 40px; height: 60px;
+  background-color: #e8e7f1;
+  border-radius: 2px;
+  line-height: 16px;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+}
+.card-list {
+
+}
+@media screen and (max-width: 800px) {
+  .main{
+    width: auto; margin: 50px 10px;
+  }
+}

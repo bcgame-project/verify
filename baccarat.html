@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Baccarat verify</title>
+    <link rel="stylesheet" href="./lib/main.css" />
+    <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css" />
+    <script src="./lib/vue.min.js"></script>
+    <script src="./lib/crypto-js.js"></script>
+    <script src="./lib/tools.js"></script>
+    <script src="./lib/GoogleAnalytics.js"></script>
+    <style>
+      .table {
+        font-size: 14px;
+      }
+      .card-list {
+        display: flex;
+      }
+      .cardbox {
+        height: auto;
+        padding: 0;
+        zoom: 0.8;
+      }
+      .cardbox:hover .card {
+        transform: unset;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="main">
+      <h1 class="text-center pb-5">Baccarat verify</h1>
+      <hr />
+      <form class="py-5">
+        <h2 class="text-center pb-5">Input</h2>
+        <div class="form-group">
+          <label>Hash</label>
+          <input
+            class="form-control"
+            v-model.lazy="initHash"
+            @change="doVerify"
+          />
+        </div>
+        <div class="form-group">
+          <label>Salt</label>
+          <input class="form-control" readonly :value="salt" />
+        </div>
+        <div class="form-group">
+          <label>Amount of games</label>
+          <input
+            class="form-control"
+            v-model.lazy="amount"
+            @change="doVerify"
+          />
+        </div>
+      </form>
+      <hr />
+      <form class="py-5">
+        <h2 class="text-center pb-5">Results</h2>
+        <div class="form-group" style="overflow-x: auto;">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Game's hash</th>
+                <th>Banker</th>
+                <th>Player</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(item, index) in result" :key="index">
+                <td>{{ item.hash }}</td>
+                <td>
+                  <div class="card-list">
+                    <div
+                      :class="['cardbox', card.style]"
+                      v-for="(card, _index) in item.banker.points"
+                      :key="_index"
+                    >
+                      <div class="card">
+                        <div class="flower">{{ card.suits }}</div>
+                        <div class="point">{{ card.point }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="card-list">
+                    <div
+                      :class="['cardbox', card.style]"
+                      v-for="(card, _index) in item.player.points"
+                      :key="_index"
+                    >
+                      <div class="card">
+                        <div class="flower">{{ card.suits }}</div>
+                        <div class="point">{{ card.point }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </form>
+    </div>
+  </body>
+  <script>
+    function seedGenerator(hash, salt) {
+      const hmac = CryptoJS.HmacSHA256(CryptoJS.enc.Hex.parse(hash), salt);
+      return hmac.toString(CryptoJS.enc.Hex);
+    }
+
+    function createNums(allNums, hash) {
+      const nums = [];
+      let h = CryptoJS.SHA256(hash).toString(CryptoJS.enc.Hex);
+      allNums.forEach((c) => {
+        nums.push({ num: c, hash: h });
+        h = h.substring(1) + h.charAt(0);
+      });
+      nums.sort(function (o1, o2) {
+        if (o1.hash < o2.hash) {
+          return -1;
+        } else if (o1.hash === o2.hash) {
+          return 0;
+        } else {
+          return 1;
+        }
+      });
+      return nums;
+    }
+
+    function getTotalPoint(points) {
+      let count = 0;
+      points.forEach((point) => {
+        let _point = point & 0xf;
+        count += _point >= 10 ? 0 : _point;
+      });
+      return count % 10;
+    }
+
+    function playing(allCards, startIndex) {
+      const playerCards = [allCards[startIndex], allCards[startIndex + 2]];
+      const bankerCards = [allCards[startIndex + 1], allCards[startIndex + 3]];
+
+      const playerTotalPoint = getTotalPoint(playerCards);
+      const bankerTotalPoint = getTotalPoint(bankerCards);
+
+      const lastCard = allCards[startIndex + 5];
+
+      const getLastPoint = function (cards) {
+        return getTotalPoint([cards[2]]);
+      };
+
+      if (bankerTotalPoint >= 8 || playerTotalPoint >= 8) {
+        // get result
+      } else if (playerTotalPoint >= 6 && bankerTotalPoint >= 6) {
+        // get result
+      } else {
+        if (playerTotalPoint <= 5) {
+          playerCards.push(allCards[startIndex + 4]);
+        }
+
+        if (playerCards.length == 2) {
+          if (bankerTotalPoint <= 5) {
+            bankerCards.push(allCards[startIndex + 4]);
+          }
+        } else if (bankerTotalPoint <= 2) {
+          bankerCards.push(lastCard);
+        } else if (
+          bankerTotalPoint == 3 &&
+          playerCards.length == 3 &&
+          getLastPoint(playerCards) != 8
+        ) {
+          bankerCards.push(lastCard);
+        } else if (
+          bankerTotalPoint == 4 &&
+          playerCards.length == 3 &&
+          getLastPoint(playerCards) >= 2 &&
+          getLastPoint(playerCards) <= 7
+        ) {
+          bankerCards.push(lastCard);
+        } else if (
+          bankerTotalPoint == 5 &&
+          playerCards.length == 3 &&
+          getLastPoint(playerCards) >= 4 &&
+          getLastPoint(playerCards) <= 7
+        ) {
+          bankerCards.push(lastCard);
+        } else if (
+          bankerTotalPoint == 6 &&
+          playerCards.length == 3 &&
+          getLastPoint(playerCards) >= 6 &&
+          getLastPoint(playerCards) <= 7
+        ) {
+          bankerCards.push(lastCard);
+        }
+      }
+      let result = {
+        player: {
+          points: playerCards.map((card) => createCardFram(card)),
+          totalPoint: getTotalPoint(playerCards),
+        },
+        banker: {
+          points: bankerCards.map((card) => createCardFram(card)),
+          totalPoint: getTotalPoint(bankerCards),
+        },
+      };
+      return result;
+    }
+
+    function getAllCards(hash, salt) {
+      const allNums = [
+        161,
+        180,
+        199,
+        218,
+        162,
+        205,
+        181,
+        200,
+        219,
+        163,
+        182,
+        220,
+        201,
+        177,
+        196,
+        215,
+        170,
+        178,
+        221,
+        197,
+        216,
+        171,
+        179,
+        198,
+        172,
+        217,
+        193,
+        212,
+        167,
+        186,
+        194,
+        173,
+        213,
+        168,
+        187,
+        195,
+        214,
+        188,
+        169,
+        209,
+        164,
+        183,
+        202,
+        210,
+        189,
+        165,
+        184,
+        203,
+        211,
+        166,
+        204,
+        185,
+      ];
+      let seed = seedGenerator(hash, salt);
+      let finalNums = createNums(allNums, seed);
+      seed = String(CryptoJS.SHA256(seed));
+      finalNums = createNums(finalNums, seed);
+      let allCards = finalNums
+        .slice(0, 6)
+        .map((m) => m.num)
+        .map((item) => item.num);
+      return allCards;
+    }
+
+    function createCardFram(card) {
+      const CARDS = " ,A,2,3,4,5,6,7,8,9,10,J,Q,K".split(",");
+      const SUITS = ["♠", "♥", "♣", "♦"];
+      let suitsIndex = (card & 240) / 16 - 10;
+      let suits = SUITS[suitsIndex];
+      let point = CARDS[card % 16];
+      let style = suitsIndex % 2 === 0 ? "black" : "red";
+      let classNames = ["cardbox", style];
+      return {
+        style,
+        suits,
+        point,
+      };
+    }
+
+    let qs = tools.queryString();
+    const app = new Vue({
+      el: "#app",
+      data: {
+        amount: 10,
+        initHash: qs.hash,
+        salt:
+          "00000000000000000009c6d5d13f0bf616e9601ab9b7f2dce635492700aaa773",
+        result: [],
+      },
+      computed: {},
+      created() {
+        this.doVerify();
+        ga('send', 'event', 'Baccarat', 'verify', this.initHash, {metric0: this.amount})
+      },
+      methods: {
+        doVerify() {
+          let prevHash = null;
+          let list = [];
+          for (let i = 0; i < this.amount; i++) {
+            let hash = String(
+              prevHash ? CryptoJS.SHA256(String(prevHash)) : this.initHash
+            );
+            let allCards = getAllCards(hash, this.salt);
+            let result = playing(allCards, 0);
+            result.hash = hash;
+            list.push(result);
+            prevHash = hash;
+          }
+          this.result.splice(0, this.result.length, ...list);
+        },
+      },
+    });
+  </script>
+</html>
+
