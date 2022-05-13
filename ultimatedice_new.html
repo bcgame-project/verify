@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>UltimateDice verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/GoogleAnalytics.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
+</head>
+<body>
+  
+<div id="app" class="main">
+  <h1 class="text-center pb-5">UltimateDice verify</h1> 
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center">Input</h2>
+    <div class="form-group">
+      <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control" placeholder="Client Seed">
+    </div>
+    <div class="form-group">
+      <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control" placeholder="Server Seed">
+    </div>
+    <div class="form-group">
+      <input :value="server_seed_hash" @change="server_seed_hash = $event.target.value" class="form-control" placeholder="Server Seed Hash">
+    </div>
+    <div class="form-group">
+      <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce">
+    </div>
+  </form>
+  <hr>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Output</h2>
+    <div class="form-group">
+      <label>sha256(server_seed)</label>
+      <input class="form-control" readonly :value="sha256(server_seed)">
+    </div>
+    <div class="form-group">
+      <label>hmac_sha256(client_seed:nonce, server_seed)</label>
+      <input class="form-control" readonly :value="result_hash">
+    </div>
+  </form>
+    <hr>
+  <form class="py-5">
+    <h2 class="text-center pb-5">Results</h2>
+    <h5>Final Result</h5>
+    <input class="form-control" readonly :value="numResult">
+    <h5 style="margin-top: 20px;">Calculation Process</h5>
+    <p>Using the formula `hmac_sha256(client_seed:nonce, server_seed)`,</p>
+    <p>We get the hash result:</p>
+    <p>`{{result_hash}}`.</p>
+    <br>
+    <ol>
+      <li>Take the first 15 characters, resulting in `{{baseHash}}`.</li>
+      <li>Convert this to decimal, which gives: `{{BigInt('0x' + baseHash)}}`.</li>
+      <li>Perform modulus 47(47 is fixed constant), and we get a remainder of {{index}}.</li>
+      <li>Starting from the index, take 14 characters, resulting in <span class="text-danger">`{{newHash}}`</span>.</li>
+      <li>Convert this to decimal, resulting in: `{{BigInt('0x' + newHash)}}`.</li>
+      <li>Divide by 8(8 is a fixed constant), resulting in: `{{BigInt('0x' + newHash) / BigInt(8)}}`.</li>
+      <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53)}}`.</li>
+      <li>Multiply by 10000(10000 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53) * 10000}}`.</li>
+      <li>Finally, take the integer part of the result, which gives: <span class="text-success">`{{numResult}}`</span>.</li>
+    </ol>
+    <div></div>
+  </form>
+</div>
+</body>
+<script>
+let qs = tools.queryString();
+var app = new Vue({
+  el: '#app',
+  data: {
+    /** inputs */
+    client_seed: qs.c || '',
+    server_seed: qs.s || '',
+    server_seed_hash: qs.h || '',
+    nonce: parseInt(qs.n) || 0,
+  },
+  computed: {
+    result_hash () {
+      return this.hmac_sha256(this.client_seed + ':' + this.nonce, this.server_seed);
+    },
+    result_hash_list () {
+      return String(this.result_hash)
+    },
+    baseHash () {
+      return this.result_hash_list.substring(0, 15)
+    },
+    index () {
+      return Number(BigInt('0x' + this.result_hash_list.substring(0, 15)) % BigInt(47))
+    },
+    newHash () {
+      return this.result_hash_list.substring(this.index, this.index + 14)
+    },
+    numResult () {
+      return parseInt(slideWindowNumber(this.result_hash_list, 10000));
+    },
+  },
+  watch: {
+    'this.numResult'() {
+      ga('send', 'event', 'UltimateDice', 'verify', this.server_seed, {metric0: this.client_seed, metric1: this.nonce})
+    }
+  },
+  created () {
+    console.log(this.result_hash_list)
+  },
+  methods: {
+    hmac_sha256 (msg, salt) {
+      return CryptoJS.HmacSHA256(msg, salt);
+    },
+    sha512 (value) {
+      return CryptoJS.SHA512(CryptoJS.enc.Utf8.parse(value));
+    },
+    sha256 (value) {
+      return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(value));
+    },
+    parseInt (value) {
+      return window.parseInt(value, 16);
+    },
+  }
+});
+</script>
+</html>

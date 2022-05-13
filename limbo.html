@@ -62,6 +62,7 @@ var app = new Vue({
     client_seed: qs.c || '',
     server_seed: qs.s || '',
     server_seed_hash: qs.h || '',
+    house_edge: qs.he || '1',
     nonce: parseInt(qs.n) || 0,
   },
   computed: {
@@ -77,7 +78,7 @@ var app = new Vue({
       seed = seed.slice(0, nBits / 4);
       const r = parseInt(seed, 16);
       let X = r / Math.pow(2, nBits);
-      X = 99 / (1 - X);
+      X = (100 - (Number(this.house_edge) || 1)) / (1 - X);
       const result = Math.floor(X);
       return this.server_seed ? Math.max(1, result / 100) : '';
     }

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  <title>Stellar Rush verify</title>
+  <link rel="stylesheet" href="./lib/main.css" />
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css" />
+  <script src="./lib/GoogleAnalytics.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+</head>
+
+<body>
+  <div id="app" class="main">
+    <h1 class="text-center pb-5">Stellar Rush verify</h1>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center">Input</h2>
+      <div class="form-group">
+        <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control"
+          placeholder="Server Seed" />
+      </div>
+      <div class="form-group">
+        <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control"
+          placeholder="Client Seed" />
+      </div>
+      <div class="form-group">
+        <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce" />
+      </div>
+    </form>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Output</h2>
+      <div class="form-group">
+        <label>sha256(server_seed)</label>
+        <input class="form-control" readonly
+          :value="CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(server_seed)).toString()" />
+      </div>
+      <div class="form-group">
+        <label>hmac_sha256(client_seed:nonce, server_seed)</label>
+        <input class="form-control" readonly :value="result_hash" />
+      </div>
+    </form>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Final Result</h2>
+      <span>{{ resultList }}</span>
+    </form>
+  </div>
+</body>
+<script>
+  let qs = tools.queryString();
+  var app = new Vue({
+    el: "#app",
+    data: {
+      /** inputs */
+      client_seed: qs.c || "",
+      server_seed: qs.s || "",
+      nonce: parseInt(qs.n) || 0,
+    },
+    computed: {
+      result_hash() {
+        return CryptoJS.HmacSHA256(
+          this.client_seed + ":" + this.nonce,
+          this.server_seed
+        );
+      },
+
+      result_hash_list() {
+        return String(this.result_hash);
+      },
+
+      sha256ServerSeed() {
+        return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(this.server_seed)).toString();
+      },
+
+      hmacSha256Result() {
+        return CryptoJS.HmacSHA256(
+          `${this.client_seed}:${this.nonce}`,
+          this.server_seed
+        ).toString();
+      },
+
+      resultList() {
+        return this.getResult(this.hmacSha256Result);
+      },
+    },
+    watch: {
+      "this.gameResult"() {
+        ga("send", "event", "Limbo", "verify", this.server_seed, {
+          metric0: this.client_seed,
+          metric1: this.nonce,
+        });
+      },
+    },
+    methods: {
+      parseInt(value) {
+        return window.parseInt(value, 16);
+      },
+
+      createNums(allNums, hash) {
+        let nums = [];
+        let h = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(hash)).toString(CryptoJS.enc.Hex);
+        allNums.forEach((c) => {
+          nums.push({ num: c, hash: h });
+          h = h.substring(1) + h.charAt(0);
+        });
+        nums.sort((o1, o2) =>
+          o1.hash < o2.hash ? -1 : o1.hash > o2.hash ? 1 : 0
+        );
+        return nums;
+      },
+
+      getResult(hash) {
+        const allNums = [
+          7, 2, 19, 25, 1, 13, 5, 24, 14, 6, 15, 9, 22, 16, 3, 17, 18, 20, 8,
+          21, 4, 12, 10, 23, 11,
+        ];
+        let seed = hash;
+        let finalNums = this.createNums(allNums, seed);
+        seed = CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(seed)).toString();
+        finalNums = this.createNums(finalNums, seed);
+        return finalNums.map((m) => m.num.num);
+      },
+    },
+  });
+</script>
+
+</html>
