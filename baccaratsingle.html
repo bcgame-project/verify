@@ -111,9 +111,11 @@
     }
 
     function getPoint (list) {
-      return list.reduce((pre, item) => {
-        return pre + item.point;
+      const result = list.reduce((pre, item) => {
+        const currPoint = item.pointNum > 10 ? 10 : item.pointNum;
+        return pre + currPoint;
       }, 0)
+      return result % 10;
     }
 
     function getRestlt (hash) {
@@ -128,12 +130,14 @@
       let suitsIndex = (card & 240) / 16 - 10;
       let suits = SUITS[suitsIndex];
       let point = CARDS[card % 16];
+      let pointNum = card % 16;
       let style = suitsIndex % 2 === 0 ? "black" : "red";
       let classNames = ["cardbox", style];
       return {
         style,
         suits,
         point,
+        pointNum: pointNum > 10 ? 10 : pointNum
       };
     }
 
@@ -163,7 +167,7 @@
           player.push(new Card(resultList[4]));
         }
         const thirdCardPoint = player[2] ? getPoint([player[2]]) % 10 : -1;
-        const flag = canBankerGetCard(bankerPoint % 10, palyerPoint, thirdCardPoint);
+        const flag = canBankerGetCard(bankerPoint % 10, palyerPoint % 10, thirdCardPoint);
         if(flag) banker.push(isPlayerGetCard ? createCardFram(resultList[5]) : createCardFram(resultList[4]));
         const playerPointFinal = getPoint(player);
         const bankerPointFinal = getPoint(banker);
@@ -198,7 +202,7 @@
                   {player.map((item, index) => {
                     const clname = "result-card-item" + (index+1);
                     return (
-                      <div className={clname + " card " + item.style} key={item.point + "-" + index}>
+                      <div className={clname + " card " + item.style} key={item.pointNum + "-" + index}>
                         <div className="flower">{item.suits}</div>
                         <div className="point">{item.point}</div>
                       </div>
@@ -212,7 +216,7 @@
                   {banker.map((item, index) => {
                     const clname = "result-card-item" + (index+1);
                     return (
-                      <div className={clname + " card " + item.style} key={item.point + "-" + index}>
+                      <div className={clname + " card " + item.style} key={item.pointNum + "-" + index}>
                         <div className="flower">{item.suits}</div>
                         <div className="point">{item.point}</div>
                       </div>
