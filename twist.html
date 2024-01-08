@@ -65,11 +65,11 @@
         <table class="table table-sm table-bordered">
           <tbody>
             <tr>
-              <th>Left</th>
-              <th>Middle</th>
-              <th>Right</th>
-              <th>Ghost</th>
-              <th>Blank</th>
+              <th>Green gem</th>
+              <th>Purple gem</th>
+              <th>Red gem</th>
+              <th>Dark gem</th>
+              <th>Stone</th>
             </tr>
             <tr>
               <td v-for="(num, index) in layerInfo" :class="{'bg-success': index == luckyIndex}">{{ num[0] }}</td>
@@ -110,11 +110,11 @@
           <tbody>
             <tr>
               <th>Layer</th>
-              <th>Left</th>
-              <th>Middle</th>
-              <th>Right</th>
-              <th>Ghost</th>
-              <th>Blank</th>
+              <th>Green gem</th>
+              <th>Purple gem</th>
+              <th>Red gem</th>
+              <th>Dark gem</th>
+              <th>Stone</th>
             </tr>
             <tr v-for="item in layerData" :key="item[0]">
               <td>{{ formatLayerString(item[0]) }}</td>
