@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roulette Single Verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/react.production.min.js"></script>
+  <script src="./lib/react-dom.production.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/hooks.js"></script>
+  <script src="./lib/babel.min.js"></script>
+  <script src="./lib/utils.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="text/babel">
+    let qs = tools.queryString();
+    let { useEffect, useMemo } = React;
+    const { useSetState } = hooks;
+    function useInputControl (initState) {
+      const [state, setState] = useSetState(initState);
+      const bind = key => ({
+        value: state[key],
+        onChange: v => setState({[key]: v})
+      });
+      return [
+        state,
+        setState,
+        bind
+      ];
+    }
+    function Input ({value, onChange, ...others}) {
+      return (
+        <div class="form-group">
+          <input value={value}
+            onChange={e => onChange(e.target.value)}
+            class="form-control"
+            {...others}
+          />
+        </div>
+      );
+    }
+
+    function getResult (hash) {
+      return Math.floor(slideWindowNumber(hash, 37));
+    }
+
+    function RouletteSingle () {
+      const [state, setState, bind] = useInputControl({
+        clientSeed: qs.c||'',
+        serverSeed: qs.s||'',
+        nonce: qs.n||''
+      });
+
+      const result = useMemo(() => {
+        const serverSeedHash = tools.sha256(state.serverSeed);
+        const resultArr = [state.clientSeed, state.nonce];
+        const hmacSha256Result = String(CryptoJS.HmacSHA256(resultArr.join(":"), state.serverSeed));
+        const finalResult = getResult(hmacSha256Result);
+
+        return {
+          serverSeedHash,
+          hmacSha256Result,
+          finalResult,
+          resultList
+        }
+      }, [state]);
+      const {resultList, finalResult} = result;
+      return (
+        <div className="main">
+          <h1 className="text-center pb-5">Roulette single verify</h1> 
+          <hr />
+          <h2 class="text-center">Input</h2>
+          <form className="py-5">
+            <Input placeholder="Server Seed" {...bind('serverSeed')} />
+            <Input placeholder="Client Seed (Hashed)" {...bind('clientSeed')} />
+            <Input placeholder="Nonce" {...bind('nonce')} />
+          </form>
+          <h2 class="text-center">Output</h2>
+          <form className="py-5">
+            <Input placeholder="HmacSHA256(clientSeed, serverSeed)" readOnly value={result.hmacSha256Result} />
+            <Input placeholder="Result" readOnly value={result.finalResult} />
+          </form>
+        </div>
+      );
+    }
+    ReactDOM.render(<RouletteSingle />, document.getElementById("app"));
+  </script>
+</body>
+</html>
