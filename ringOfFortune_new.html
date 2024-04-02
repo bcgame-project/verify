@@ -11,6 +11,7 @@
   <script src="./lib/vue.min.js"></script>
   <script src="./lib/crypto-js.js"></script>
   <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
 </head>
 <body>
   
@@ -47,30 +48,9 @@
     <hr>
   <form class="py-5">
     <h2 class="text-center pb-5">Results</h2>
-    <h5>Final Result</h5>
-    <h5>hmac_sha256(client_seed:nonce, server_seed)</h5>
-    <div class="form-group" style="overflow-x: auto;">
-      <table class="table table-sm table-bordered">
-        <tbody>
-          <tr>
-            <td v-for="(item, index) in results.dec" :key="index" :class="{'text-muted': index > 3}">{{ item }}</td>
-          </tr>
-          <tr>
-            <td v-for="(item, index) in results.hex" :key="index" :class="{'text-muted': index > 3}">{{ item }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <h5>Bytes to Number</h5>
     <div class="form-group">
-      ({{results.hex[0] + ', ' + results.hex[1] + ', ' + results.hex[2] + ', ' + results.hex[3]}}) -> [0, ... 4] = <span class="text-success">{{Math.floor(numResult * 1000)}}</span>
-      <div><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span> {{Number(results.hex[0] / 256).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[0]}} / (256 ^ 1))</span></div>
-      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[1] / (256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[1]}} / (256 ^ 2))</span></div>
-      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[2] / (256 * 256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[2]}} / (256 ^ 3))</span></div>
-      <div><span>+&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{Number(results.hex[3] / (256 * 256 * 256 * 256)).toFixed(9)}}&nbsp;&nbsp;&nbsp;&nbsp;</span><span>({{results.hex[3]}} / (256 ^ 4))</span></div>
-      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span>{{numResult}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>(* 1000)</div>
-      <div><span>=&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="text-success">{{Number(numResult * 1000).toFixed(9)}}</span></div>
-    </div>
+      <label>Final Result</label>
+      <input class="form-control" readonly :value="numResult * 1000">
     <div>
       <div :class="{'text-success': numResult * 1000 <= 495}">0~495 = 1.93x</div>
       <div :class="{'text-success': numResult * 1000 >= 496 && numResult * 1000 <= 825}">496~825 = 2.90x</div>
@@ -113,12 +93,7 @@ var app = new Vue({
       return res
     },
     numResult () {
-      let num = 0
-      let list = this.results.hex
-      for (let i = 0; i < 4; i++) {
-        num += list[i] / Math.pow(256, (i + 1))
-      }
-      return num.toFixed(9)
+      return slideWindowNumber(this.result_hash_list, 1000) / 1000;
     }
   },
   watch: {
