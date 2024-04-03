@@ -52,10 +52,10 @@
       <label>Final Result</label>
       <input class="form-control" readonly :value="numResult * 1000">
     <div>
-      <div :class="{'text-success': numResult * 1000 <= 495}">0~495 = 1.93x</div>
-      <div :class="{'text-success': numResult * 1000 >= 496 && numResult * 1000 <= 825}">496~825 = 2.90x</div>
-      <div :class="{'text-success': numResult * 1000 >= 826 && numResult * 1000 <= 990}">826~990 = 5.81x</div>
-      <div :class="{'text-success': numResult * 1000 >= 991}">991~1000 = 96x</div>
+      <div :class="{'text-success': numResult * 1000 <= 495}">0~495 = {{range1}}</div>
+      <div :class="{'text-success': numResult * 1000 >= 496 && numResult * 1000 <= 825}">496~825 = {{range2}}</div>
+      <div :class="{'text-success': numResult * 1000 >= 826 && numResult * 1000 <= 990}">826~990 = {{range3}}</div>
+      <div :class="{'text-success': numResult * 1000 >= 991}">991~1000 = {{range4}}</div>
     </div>
   </form>
 </div>
@@ -70,6 +70,10 @@ var app = new Vue({
     server_seed: qs.s || '',
     server_seed_hash: qs.h || '',
     nonce: parseInt(qs.n) || 0,
+    range1: qs.he === '4' ? '1.93x' : '2x',
+    range2: qs.he === '4' ? '2.90x' : '3x',
+    range3: qs.he === '4' ? '5.81x' : '6x',
+    range4: qs.he === '4' ? '96x' : '99x',
   },
   computed: {
     result_hash () {
