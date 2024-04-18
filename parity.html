@@ -81,8 +81,8 @@
     </div>
     <hr>
     <div class="container">
-      <p>The following sites have purchased a non-distributable copy of the previous version of bc.game’s source code, exempting them from the requirements of the AGPL:</p>
-      <p><a target="_blank" href="https://bc.game">https://bc.game</a></p>
+      <p>The following sites have purchased a non-distributable copy of the previous version of betco source code, exempting them from the requirements of the AGPL:</p>
+      <p><a target="_blank" href=" https://bet.co/"> https://bet.co/</a></p>
     </div>
     <hr>
     <!-- <div class="container">
@@ -124,7 +124,7 @@
         <thead>
           <tr>
             <th><b>Game's hash</b></th>
-            <th><b>Bust</b></th>
+            <th><b>Result</b></th>
           </tr>
         </thead>
         <tbody id="game_verify_table"></tbody>
@@ -171,9 +171,7 @@
         }).append(
           $('<td/>').text(hash)
         ).append(
-          $('<td/>').text(bust).attr({
-            'class': bust === 1.98 ? 'is-at-median' : bust > 1.98 ? 'is-over-median' : 'is-under-median'
-          })
+          $('<td/>').text(bust)
         ).appendToWithIndex($('#game_verify_table'), index);
         if (index >= $('#game_amount_input').val() - 1) {
           $('#game_hash_input').parent().removeClass('is-loading');
