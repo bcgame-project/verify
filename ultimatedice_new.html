@@ -48,10 +48,25 @@
     <hr>
   <form class="py-5">
     <h2 class="text-center pb-5">Results</h2>
-    <div class="form-group">
-      <label>Final Result</label>
-      <input class="form-control" readonly :value="numResult">
-    </div>
+    <h5>Final Result</h5>
+    <input class="form-control" readonly :value="numResult">
+    <h5 style="margin-top: 20px;">Calculation Process</h5>
+    <p>Using the formula `hmac_sha256(client_seed:nonce, server_seed)`,</p>
+    <p>We get the hash result:</p>
+    <p>`{{result_hash}}`.</p>
+    <br>
+    <ol>
+      <li>Take the first 15 characters, resulting in `{{baseHash}}`.</li>
+      <li>Convert this to decimal, which gives: `{{BigInt('0x' + baseHash)}}`.</li>
+      <li>Perform modulus 47(47 is fixed constant), and we get a remainder of {{index}}.</li>
+      <li>Starting from the index, take 14 characters, resulting in <span class="text-danger">`{{newHash}}`</span>.</li>
+      <li>Convert this to decimal, resulting in: `{{BigInt('0x' + newHash)}}`.</li>
+      <li>Divide by 8(8 is a fixed constant), resulting in: `{{BigInt('0x' + newHash) / BigInt(8)}}`.</li>
+      <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53)}}`.</li>
+      <li>Multiply by 10000(10000 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53) * 10000}}`.</li>
+      <li>Round to nearest integer, resulting in: <span class="text-success">`{{numResult}}`</span>.</li>
+    </ol>
+    <div></div>
   </form>
 </div>
 </body>
@@ -73,31 +88,18 @@ var app = new Vue({
     result_hash_list () {
       return String(this.result_hash)
     },
-    results () {
-      let list = this.result_hash_list
-      let res = {
-        dec: [],
-        hex: []
-      }
-      for (let i = 0; i < list.length; i += 2) {
-        let dext = list[i] + list[i + 1]
-        let hext = parseInt(dext, 16)
-        res.dec.push(dext)  
-        res.hex.push(hext)
-      }
-      return res
+    baseHash () {
+      return this.result_hash_list.substring(0, 15)
+    },
+    index () {
+      return Number(BigInt('0x' + this.result_hash_list.substring(0, 15)) % BigInt(47))
+    },
+    newHash () {
+      return this.result_hash_list.substring(this.index, this.index + 14)
     },
     numResult () {
       return parseInt(slideWindowNumber(this.result_hash_list, 10000));
     },
-    // numResult () {
-    //   let num = 0
-    //   let list = this.results.hex
-    //   for (let i = 0; i < 4; i++) {
-    //     num += list[i] / Math.pow(256, (i + 1))
-    //   }
-    //   return num.toFixed(9)
-    // }
   },
   watch: {
     'this.numResult'() {
