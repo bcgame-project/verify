@@ -64,7 +64,7 @@
       <li>Divide by 8(8 is a fixed constant), resulting in: `{{BigInt('0x' + newHash) / BigInt(8)}}`.</li>
       <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53)}}`.</li>
       <li>Multiply by 10000(10000 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53) * 10000}}`.</li>
-      <li>Round to nearest integer, resulting in: <span class="text-success">`{{numResult}}`</span>.</li>
+      <li>Finally, take the integer part of the result, which gives: <span class="text-success">`{{numResult}}`</span>.</li>
     </ol>
     <div></div>
   </form>
