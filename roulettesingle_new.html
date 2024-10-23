@@ -61,18 +61,24 @@
         const resultArr = [state.clientSeed, state.nonce];
         const hmacSha256Result = String(CryptoJS.HmacSHA256(resultArr.join(":"), state.serverSeed));
         const finalResult = getResult(hmacSha256Result);
+        const baseHash = hmacSha256Result.substring(0, 15);
+        const index = Number(BigInt('0x' + baseHash) % BigInt(47));
+        const newHash = hmacSha256Result.substring(index, index + 14);
 
         return {
           serverSeedHash,
           hmacSha256Result,
           finalResult,
-          resultList
+          resultList,
+          baseHash,
+          index,
+          newHash,
         }
       }, [state]);
       const {resultList, finalResult} = result;
       return (
         <div className="main">
-          <h1 className="text-center pb-5">Roulette single verify</h1> 
+          <h1 className="text-center pb-5">Roulette single verify</h1>
           <hr />
           <h2 class="text-center">Input</h2>
           <form className="py-5">
@@ -80,10 +86,28 @@
             <Input placeholder="Client Seed (Hashed)" {...bind('clientSeed')} />
             <Input placeholder="Nonce" {...bind('nonce')} />
           </form>
-          <h2 class="text-center">Output</h2>
           <form className="py-5">
+            <h2 className="text-center pb-5">Results</h2>
+            <h5>Final Result</h5>
             <Input placeholder="HmacSHA256(clientSeed, serverSeed)" readOnly value={result.hmacSha256Result} />
             <Input placeholder="Result" readOnly value={result.finalResult} />
+            <h5 style={{ marginTop: 20 }}>Calculation Process</h5>
+            <p>Using the formula `hmac_sha256(client_seed:nonce, server_seed)`,</p>
+            <p>We get the hash result:</p>
+            <p>{result.hmacSha256Result}.</p>
+            <br />
+            <ol>
+              <li>Take the first 15 characters, resulting in {result.baseHash}.</li>
+              <li>Convert this to decimal, which gives: {BigInt('0x' + result.baseHash)}.</li>
+              <li>Perform modulus 47(47 is fixed constant), and we get a remainder of {result.index}.</li>
+              <li>Starting from the index, take 14 characters, resulting in <span className="text-danger">{result.newHash}</span>.</li>
+              <li>Convert this to decimal, resulting in: {BigInt('0x' + result.newHash)}.</li>
+              <li>Divide by 8(8 is a fixed constant), resulting in: {BigInt('0x' + result.newHash) / BigInt(8)}.</li>
+              <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: {Number(BigInt('0x' + result.newHash) / BigInt(8)) * Math.pow(2, -53)}.</li>
+              <li>Multiply by 37(37 is a fixed constant), resulting in: {Number(BigInt('0x' + result.newHash) / BigInt(8)) * Math.pow(2, -53) * 37}.</li>
+              <li>Finally, take the integer part of the result, which gives: <span class="text-success">{result.finalResult}</span>.</li>
+            </ol>
+            <div></div>
           </form>
         </div>
       );

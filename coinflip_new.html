@@ -106,15 +106,34 @@
           <h2 class="text-center">Output</h2>
           <form className="py-5">
             {
-              Array(state.round).fill(1).map((item, index) => {
-                const hmacSha256Result = getHashString(state.serverSeed, state.clientSeed, state.nonce, index+1);
+              Array(state.round).fill(1).map((item, idx) => {
+                const hmacSha256Result = getHashString(state.serverSeed, state.clientSeed, state.nonce, idx+1);
                 const finalResult = getResult(hmacSha256Result);
+                const baseHash = hmacSha256Result.substring(0, 15);
+                const index = Number(BigInt('0x' + baseHash) % BigInt(47));
+                const newHash = hmacSha256Result.substring(index, index + 14);
                 return (
-                  <div className="round-item" key={"round-" + index}>
-                    <p className="t">Round: {index + 1}</p>
+                  <div className="round-item" key={"round-" + idx}>
+                    <p className="t">Round: {idx + 1}</p>
                     <div class="form-group">
                       <label>Final Result</label>
                       <input class="form-control" disabled value={finalResult} />
+                      <h5 style={{ marginTop: 20 }}>Calculation Process</h5>
+                      <p>Using the formula `hmac_sha256(client_seed:nonce, server_seed)`,</p>
+                      <p>We get the hash result:</p>
+                      <p>{hmacSha256Result}.</p>
+                      <br />
+                      <ol>
+                        <li>Take the first 15 characters, resulting in {baseHash}.</li>
+                        <li>Convert this to decimal, which gives: {BigInt('0x' + baseHash)}.</li>
+                        <li>Perform modulus 47(47 is fixed constant), and we get a remainder of {index}.</li>
+                        <li>Starting from the index, take 14 characters, resulting in <span className="text-danger">{newHash}</span>.</li>
+                        <li>Convert this to decimal, resulting in: {BigInt('0x' + newHash)}.</li>
+                        <li>Divide by 8(8 is a fixed constant), resulting in: {BigInt('0x' + newHash) / BigInt(8)}.</li>
+                        <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: {Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53)}.</li>
+                        <li>Multiply by 2(2 is a fixed constant), resulting in: {Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53) * 2}.</li>
+                        <li>Finally, take the integer part of the result, which gives: <span class="text-success">{finalResult}</span>.</li>
+                      </ol>
                     </div>
                   </div>
                 )
