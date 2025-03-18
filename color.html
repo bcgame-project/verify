@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Color verify</title>
+    <link rel="stylesheet" href="./lib/main.css" />
+    <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css" />
+    <script src="./lib/GoogleAnalytics.js"></script>
+    <script src="./lib/vue.min.js"></script>
+    <script src="./lib/crypto-js.js"></script>
+    <script src="./lib/tools.js"></script>
+</head>
+
+<body>
+    <div id="app" class="main">
+        <h1 class="text-center pb-5">Color verify</h1>
+        <hr />
+        <form class="py-5">
+            <h2 class="text-center">Input</h2>
+            <div class="form-group">
+                <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control"
+                    placeholder="Server Seed" />
+            </div>
+            <div class="form-group">
+                <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control"
+                    placeholder="Client Seed" />
+            </div>
+            <div class="form-group">
+                <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce" />
+            </div>
+        </form>
+        <hr />
+        <form class="py-5">
+            <h2 class="text-center pb-5">Output</h2>
+            <div class="form-group">
+                <label>sha256(server_seed)</label>
+                <input class="form-control" readonly
+                    :value="CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(server_seed)).toString()" />
+            </div>
+            <div class="form-group">
+                <label>hmac_sha256(client_seed:nonce, server_seed)</label>
+                <input class="form-control" readonly :value="result_hash" />
+            </div>
+        </form>
+        <hr />
+        <form class="py-5">
+            <h2 class="text-center pb-5">Final Result</h2>
+            <span>{{ resultList }}</span>
+        </form>
+    </div>
+</body>
+<script>
+    let qs = tools.queryString();
+    var app = new Vue({
+        el: "#app",
+        data: {
+            /** inputs */
+            client_seed: qs.c || "",
+            server_seed: qs.s || "",
+            nonce: parseInt(qs.n) || 0,
+        },
+        computed: {
+            result_hash() {
+                return CryptoJS.HmacSHA256(
+                    this.client_seed + ":" + this.nonce,
+                    this.server_seed
+                );
+            },
+
+            result_hash_list() {
+                return String(this.result_hash);
+            },
+
+            sha256ServerSeed() {
+                return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(this.server_seed)).toString();
+            },
+
+            hmacSha256Result() {
+                return CryptoJS.HmacSHA256(
+                    `${this.client_seed}:${this.nonce}`,
+                    this.server_seed
+                ).toString();
+            },
+
+            resultList() {
+                return this.getResult(this.server_seed, this.client_seed, this.nonce);
+            },
+        },
+        watch: {
+            "this.gameResult"() {
+                ga("send", "event", "Color", "verify", this.server_seed, {
+                    metric0: this.client_seed,
+                    metric1: this.nonce,
+                });
+            },
+        },
+        methods: {
+            parseInt(value) {
+                return window.parseInt(value, 16);
+            },
+
+            getResult(serverSeed, clientSeed, nonce) {
+                const key = `${clientSeed}:${nonce}`;
+                const results = [];
+
+                for (let i = 0; i < 3; i++) {
+                    const hash = this.hmacSHA256(key, `${serverSeed}:${i}`);
+                    const calcNum = this.calNumber(hash, i, 6);
+                    results.push(calcNum);
+                }
+
+                return results;
+            },
+
+            // HMAC-SHA256 计算哈希值
+            hmacSHA256(key, message) {
+                return CryptoJS.HmacSHA256(key, message).toString()
+            },
+
+            // 生成随机数的函数（需要和 Java 逻辑匹配）
+            calNumber(hash, index, mod) {
+                const subHash = hash.substring(index * 2, index * 2 + 8); // 取一部分哈希值
+                const num = parseInt(subHash, 16); // 转换为整数
+                return num % mod; // 取模得到结果
+            }
+        },
+    });
+</script>
+
+</html>
