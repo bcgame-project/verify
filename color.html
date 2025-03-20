@@ -112,7 +112,6 @@
                 return results;
             },
 
-            // HMAC-SHA256 计算哈希值
             hmacSHA256(key, message) {
                 // console.log(key);
                 const res = CryptoJS.HmacSHA256(key, message).toString(CryptoJS.enc.Hex);
@@ -121,7 +120,6 @@
             },
 
 
-            // 生成随机数的函数（需要和 Java 逻辑匹配）
             calNumber(hash, mod) {
                 return Math.floor(slideWindowNumber(hash, 6));
             }
