@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Bingo verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/GoogleAnalytics.js"></script>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
+</head>
+
+<body>
+
+  <div id="app" class="main">
+    <h1 class="text-center pb-5">Bingo verify</h1>
+    <hr>
+    <form class="py-5">
+      <h2 class="text-center">Input</h2>
+      <div class="form-group">
+        <input :value="client_seed" @change="client_seed = $event.target.value" class="form-control"
+          placeholder="Client Seed">
+      </div>
+      <div class="form-group">
+        <input :value="server_seed" @change="server_seed = $event.target.value" class="form-control"
+          placeholder="Server Seed">
+      </div>
+      <div class="form-group">
+        <input :value="nonce" @change="nonce = $event.target.value" class="form-control" placeholder="Nonce">
+      </div>
+    </form>
+    <hr>
+    <form class="py-5">
+      <h2 class="text-center pb-5">Output</h2>
+      <div class="form-group">
+        <label>sha256(server_seed)</label>
+        <input class="form-control" readonly :value="sha256(server_seed)">
+      </div>
+      <div class="form-group">
+        <label>hmac_sha256(client_seed:nonce, server_seed)</label>
+        <input class="form-control" readonly :value="result_hash">
+      </div>
+    </form>
+    <hr>
+    <form class="py-5">
+      <h2 class="text-center pb-5">Results</h2>
+      <h5>Final Result Balls (Click each to process)</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <tbody>
+            <tr>
+              <td v-for="(result, index) in results" 
+                  class="text-center" 
+                  style="min-width: 50px; cursor: pointer;"
+                  :class="{'bg-primary text-white': resultIndex === index}"
+                  @click="resultIndex = index">
+                {{result}}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <h5 style="margin-top: 20px;">{{ordinalNumber(resultIndex + 1)}} Ball Generate Process</h5>
+      <p>Using the formula `hmac_sha256(client_seed:nonce, server_seed)`,</p>
+      <p>We get the hash result:</p>
+      <p>`{{result_hash}}`.</p>
+      <br>
+      <ol>
+        <li>Take the first 15 characters, resulting in `{{baseHash}}`.</li>
+        <li>Convert this to decimal, which gives: `{{BigInt('0x' + baseHash)}}`.</li>
+        <li>Perform modulus 47(47 is fixed constant), and we get a remainder of {{index}}.</li>
+        <li>Starting from the index, take 14 characters, resulting in <span class="text-danger">`{{newHash}}`</span>.</li>
+        <li>Convert this to decimal, resulting in: `{{BigInt('0x' + newHash)}}`.</li>
+        <li>Divide by 8(8 is a fixed constant), resulting in: `{{BigInt('0x' + newHash) / BigInt(8)}}`.</li>
+        <li>Multiply by 2^-53(2^-53 is a fixed constant), resulting in: `{{Number(BigInt('0x' + newHash) / BigInt(8)) * Math.pow(2, -53)}}`.</li>
+        <li>Finally, Multiply by {{lastedOriginalCards[resultIndex].originalCards.length}}(51 balls - {{resultIndex}} generated), resulting in: `{{Number(BigInt('0x' + newHash) /
+          BigInt(8)) * Math.pow(2, -53) * lastedOriginalCards[resultIndex].originalCards.length}}`.</li>
+      </ol>
+      <p>The lasted ball num is: <span style="color: purple;">{{results[resultIndex]}}</span></p>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+          <tbody>
+            <tr>
+              <td v-for="(card, index) in lastedOriginalCards[resultIndex].originalCards"
+                  :key="index"
+                  class="text-center"
+                  style="min-width: 50px;"
+                  :class="{'bg-success text-white': lastedOriginalCards[resultIndex].selectCardIndex === index}">
+                {{card}}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+  </form>
+  </div>
+</body>
+<script>
+  let qs = tools.queryString();
+  const ballNum = 20;
+  var app = new Vue({
+    el: '#app',
+    data: {
+      /** inputs */
+      client_seed: qs.c || '',
+      server_seed: qs.s || '',
+      nonce: parseInt(qs.n) || 0,
+      resultIndex: 0,
+      lastedOriginalCards: [],
+    },
+    computed: {
+      result_hash() {
+        return this.hmac_sha256(this.client_seed + ':' + this.nonce, this.server_seed + ':' + this.resultIndex);
+      },
+      result_hash_list() {
+        return String(this.result_hash)
+      },
+      baseHash() {
+        return this.result_hash_list.substring(0, 15)
+      },
+      index() {
+        return Number(BigInt('0x' + this.result_hash_list.substring(0, 15)) % BigInt(47))
+      },
+      newHash() {
+        return this.result_hash_list.substring(this.index, this.index + 14)
+      },
+      results() {
+        const ORIGINAL_CARDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51];
+        const cards = [];
+        let totalCardNum = ORIGINAL_CARDS.length;
+        for (let i = 0; i < ballNum; i++) {
+          const hash = String(this.hmac_sha256(this.client_seed + ':' + this.nonce, this.server_seed + ':' + i));
+          const selectCardIndex = parseInt(slideWindowNumber(hash, totalCardNum--));
+          this.lastedOriginalCards[i] = {
+            originalCards: JSON.parse(JSON.stringify(ORIGINAL_CARDS)),
+            selectCardIndex: selectCardIndex,
+          };
+          cards.push(ORIGINAL_CARDS[selectCardIndex]);
+          ORIGINAL_CARDS.splice(selectCardIndex, 1);
+        }
+
+        return cards;
+      },
+    },
+    created() {
+      console.log(this.result_hash_list)
+    },
+    methods: {
+      hmac_sha256(msg, salt) {
+        return CryptoJS.HmacSHA256(msg, salt);
+      },
+      sha512(value) {
+        return CryptoJS.SHA512(CryptoJS.enc.Utf8.parse(value));
+      },
+      sha256(value) {
+        return CryptoJS.SHA256(CryptoJS.enc.Utf8.parse(value));
+      },
+      parseInt(value) {
+        return window.parseInt(value, 16);
+      },
+      ordinalNumber(n) {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return n + (s[(v - 20) % 10] || s[v] || s[0]);
+      }
+    }
+  });
+</script>
+
+</html>
