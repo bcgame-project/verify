@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sicbo Verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
+  <style>
+    .table {
+      font-size: 14px;
+    }
+    .dice-result {
+      font-weight: bold;
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="main">
+    <h1 class="text-center pb-5">Sicbo Verify</h1>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Input</h2>
+      <div class="form-group">
+        <label>Hash</label>
+        <input
+          class="form-control"
+          v-model.lazy="initHash"
+          @change="doVerify"
+        />
+      </div>
+      <div class="form-group">
+        <label>Salt</label>
+        <input class="form-control" readonly :value="salt" />
+      </div>
+      <div class="form-group">
+        <label>Amount of games</label>
+        <input
+          class="form-control"
+          v-model.lazy="amount"
+          @change="doVerify"
+        />
+      </div>
+    </form>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Results</h2>
+      <div class="form-group" style="overflow-x: auto;">
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th>Game's hash</th>
+              <th>Dice 1</th>
+              <th>Dice 2</th>
+              <th>Dice 3</th>
+              <th>Total Sum</th>
+              <th>Result Array</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in result" :key="index">
+              <td>{{ item.hash }}</td>
+              <td class="dice-result">{{ item.diceResults[0] }}</td>
+              <td class="dice-result">{{ item.diceResults[1] }}</td>
+              <td class="dice-result">{{ item.diceResults[2] }}</td>
+              <td class="dice-result">{{ item.totalSum }}</td>
+              <td>[{{ item.diceResults.join(', ') }}]</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    /**
+     * Sicbo calculation function based on Java implementation
+     * Generates the outcomes for three dice in a Sic Bo game.
+     * @param {string} seed - The seed value
+     * @param {string} salt - The salt value (server seed)
+     * @return {Array} A list containing three integers (between 1 and 6), representing the dice rolls.
+     */
+    function calcSicbo(seed, salt) {
+      const diceResults = [];
+      for (let i = 0; i < 3; i++) {
+        const hash = `${seed}:${i}`;
+        const message = String(CryptoJS.HmacSHA256(hash, salt));
+        // Generate a random number in the range of 1 to 6
+        const rawNumber = Math.floor(slideWindowNumber(message, 6)) + 1;
+        diceResults.push(rawNumber);
+      }
+      return diceResults;
+    }
+
+    let qs = tools.queryString();
+    const app = new Vue({
+      el: "#app",
+      data: {
+        amount: 10,
+        initHash: qs.hash || '',
+        salt: "0000000000000000000301e2801a9a9598bfb114e574a91a887f2132f33047e6",
+        result: [],
+      },
+      created() {
+        this.doVerify();
+      },
+      methods: {
+        doVerify() {
+          let prevHash = null;
+          let list = [];
+          for (let i = 0; i < this.amount; i++) {
+            let hash = String(
+              prevHash ? CryptoJS.SHA256(String(prevHash)) : this.initHash
+            );
+            
+            // Calculate sicbo dice results
+            let diceResults = calcSicbo(hash, this.salt);
+            let totalSum = diceResults.reduce((sum, dice) => sum + dice, 0);
+            
+            let result = {
+              hash: hash,
+              diceResults: diceResults,
+              totalSum: totalSum
+            };
+            
+            list.push(result);
+            prevHash = hash;
+          }
+          this.result.splice(0, this.result.length, ...list);
+        },
+      },
+    });
+  </script>
+</body>
+</html>
