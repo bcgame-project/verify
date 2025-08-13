@@ -1,181 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hilo Verify</title>
-  <link rel="stylesheet" href="./lib/main.css">
-  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
-  <style>
-    .round-item {
-      margin-bottom: 10px;
-    }
-    .round-item p {
-      margin: 4px 0;
-    }
-    .round-item .t{
-      font-weight: bold;
-    }
-    .table-wrap {
-      overflow-x: auto;
-    }
-    .round-item h6 {
-      margin: 0;
-      margin-bottom: 8px;
-    }
-    .table-wrap {
-      overflow-x: auto;
-      table {
-        border-collapse: collapse;
-        text-align: center;
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hilo Verify</title>
+    <link rel="stylesheet" href="./lib/main.css" />
+    <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css" />
+    <style>
+      .round-item {
+        margin-bottom: 10px;
       }
-      tr:nth-child(2n-1) {
-        /* background-color: ${ths.cl1}; */
+      .round-item p {
+        margin: 4px 0;
       }
-      td {
-        padding: 0.125rem;
-        border: 1px solid #8f7c00;
-        font-size: 0.8125rem;
+      .round-item .t {
+        font-weight: bold;
       }
-    }
-    .card {
-      font-family: Arial;
-    }
-    hr {
-      /* border-bottom: 1px solid ${ths.cl2}; */
-    }
-  </style>
-  <script src="./lib/react.production.min.js"></script>
-  <script src="./lib/react-dom.production.min.js"></script>
-  <script src="./lib/crypto-js.js"></script>
-  <script src="./lib/tools.js"></script>
-  <script src="./lib/hooks.js"></script>
-  <script src="./lib/babel.min.js"></script>
-  <script src="./lib/utils.js"></script>
-  <script src="./lib/card.js"></script>
-</head>
-<body>
-  <div id="app"></div>
-  <script type="text/babel">
-    let qs = tools.queryString();
-    let { useEffect, useMemo } = React;
-    const { useSetState } = hooks;
-    const allCards = [
-      161, 180, 199, 218, 162, 205, 181, 200, 219, 163, 182, 220, 201, 177, 196,
-      215, 170, 178, 221, 197, 216, 171, 179, 198, 172, 217, 193, 212, 167, 186,
-      194, 173, 213, 168, 187, 195, 214, 188, 169, 209, 164, 183, 202, 210, 189,
-      165, 184, 203, 211, 166, 204, 185,
-    ];
-    function useInputControl (initState) {
-      const [state, setState] = useSetState(initState);
-      const bind = key => ({
-        value: state[key],
-        onChange: v => setState({[key]: v})
-      });
-      return [
-        state,
-        setState,
-        bind
-      ];
-    }
-    
-    function Input ({value, onChange, ...others}) {
-      return (
-        <div class="form-group">
-          <input value={value}
-            onChange={e => onChange(e.target.value)}
-            class="form-control"
-            {...others}
-          />
-        </div>
-      );
-    }
-
-    function getHashString(serverSeed, clientSeed, nonce, round) {
-      const resultArr = [clientSeed, nonce, round];
-      const hmacSha256Result = String(CryptoJS.HmacSHA256(resultArr.join(":"), serverSeed));
-      return hmacSha256Result;
-    }
-
-    function getHashResultNumber (hashResult) {
-      let res = {dec: [], hex: []};
-      for (let i = 0; i < hashResult.length; i += 2) {
-        let dext = hashResult[i] + hashResult[i + 1]
-        let hext = parseInt(dext, 16)
-        res.dec.push(dext)  
-        res.hex.push(hext)
+      .table-wrap {
+        overflow-x: auto;
       }
-      return res;
-    }
+      .round-item h6 {
+        margin: 0;
+        margin-bottom: 8px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        table {
+          border-collapse: collapse;
+          text-align: center;
+        }
+        tr:nth-child(2n-1) {
+          /* background-color: ${ths.cl1}; */
+        }
+        td {
+          padding: 0.125rem;
+          border: 1px solid #8f7c00;
+          font-size: 0.8125rem;
+        }
+      }
+      .card {
+        font-family: Arial;
+      }
+      hr {
+        /* border-bottom: 1px solid ${ths.cl2}; */
+      }
+    </style>
+    <script src="./lib/react.production.min.js"></script>
+    <script src="./lib/react-dom.production.min.js"></script>
+    <script src="./lib/crypto-js.js"></script>
+    <script src="./lib/tools.js"></script>
+    <script src="./lib/hooks.js"></script>
+    <script src="./lib/babel.min.js"></script>
+    <script src="./lib/utils.js"></script>
+    <script src="./lib/card.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="text/babel">
+      let qs = tools.queryString();
+      let { useEffect, useMemo } = React;
+      const { useSetState } = hooks;
+      const allCards = [161, 180, 199, 218, 162, 205, 181, 200, 219, 163, 182, 220, 201, 177, 196, 215, 170, 178, 221, 197, 216, 171, 179, 198, 172, 217, 193, 212, 167, 186, 194, 173, 213, 168, 187, 195, 214, 188, 169, 209, 164, 183, 202, 210, 189, 165, 184, 203, 211, 166, 204, 185];
+      function useInputControl(initState) {
+        const [state, setState] = useSetState(initState);
+        const bind = (key) => ({
+          value: state[key],
+          onChange: (v) => setState({ [key]: v }),
+        });
+        return [state, setState, bind];
+      }
 
-    function getResult (hash) {
-      return Math.floor(slideWindowNumber(hash, 52));
-    }
-
-    function getCardStr(cardId) {
-      const card = new Card(cardId);
-      return card.suitStr + card.pointStr;
-    }
-
-    function Hilo () {
-      const [state, setState, bind] = useInputControl({
-        clientSeed: qs.c||'',
-        serverSeed: qs.s||'',
-        nonce: parseInt(qs.n)||'',
-        round: parseInt(qs.r)||10
-      });
-      const hmacSha256Result = getHashString(state.serverSeed, state.clientSeed, state.nonce, 0);
-      const finalResult = getResult(hmacSha256Result);
-      const str = `${getCardStr(allCards[finalResult])},${finalResult}, ${allCards[finalResult]}`;
-      return (
-        <div className="main">
-          <h1 className="text-center pb-5">Hilo verify</h1>
-          <hr />
-          <h2 class="text-center">Input</h2>
-          <form className="py-5">
-            <Input placeholder="Server Seed" {...bind('serverSeed')} />
-            <Input placeholder="Client Seed (Hashed)" {...bind('clientSeed')} />
-            <Input placeholder="Nonce" {...bind('nonce')} />
-            <Input placeholder="Rounds" {...bind('round')} />
-          </form>
-          <h2 class="text-center">Output</h2>
-          <form className="py-5">
-            <div className="round-item">
-              <div class="form-group">
-                <label>Final Result</label>
-                <input class="form-control" disabled value={str} />
-              </div>
-            </div>
-          </form>
-          <div className="table-wrap">
-            <table>
-              <tbody>
-                <tr>
-                  {allCards.map((item, index) => (
-                    <td key={index}>{index}</td>
-                  ))}
-                </tr>
-                <tr>
-                  {allCards.map((item, index) => (
-                    <td key={index}>
-                      <span className="card">{getCardStr(item)}</span>
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  {allCards.map((item, index) => (
-                    <td key={index}>{item}</td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
+      function Input({ value, onChange, ...others }) {
+        return (
+          <div class="form-group">
+            <input value={value} onChange={(e) => onChange(e.target.value)} class="form-control" {...others} />
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    ReactDOM.render(<Hilo />, document.getElementById("app"));
-  </script>
-</body>
+      function getHashString(serverSeed, clientSeed, nonce, round) {
+        const resultArr = [clientSeed, nonce, round];
+        const hmacSha256Result = String(CryptoJS.HmacSHA256(resultArr.join(":"), serverSeed));
+        return hmacSha256Result;
+      }
+
+      function getHashResultNumber(hashResult) {
+        let res = { dec: [], hex: [] };
+        for (let i = 0; i < hashResult.length; i += 2) {
+          let dext = hashResult[i] + hashResult[i + 1];
+          let hext = parseInt(dext, 16);
+          res.dec.push(dext);
+          res.hex.push(hext);
+        }
+        return res;
+      }
+
+      function getResult(hash) {
+        return Math.floor(slideWindowNumber(hash, 52));
+      }
+
+      function getCardStr(cardId) {
+        const card = new Card(cardId);
+        return card.suitStr + card.pointStr;
+      }
+
+      function Hilo() {
+        const [state, setState, bind] = useInputControl({
+          clientSeed: qs.c || "",
+          serverSeed: qs.s || "",
+          nonce: parseInt(qs.n) || "",
+          round: parseInt(qs.r) || 0,
+        });
+        const hmacSha256Result = getHashString(state.serverSeed, state.clientSeed, state.nonce, state.round || 0);
+        const finalResult = getResult(hmacSha256Result);
+        const str = `${getCardStr(allCards[finalResult])},${finalResult}, ${allCards[finalResult]}`;
+        return (
+          <div className="main">
+            <h1 className="text-center pb-5">Hilo verify</h1>
+            <hr />
+            <h2 class="text-center">Input</h2>
+            <form className="py-5">
+              <Input placeholder="Server Seed" {...bind("serverSeed")} />
+              <Input placeholder="Client Seed (Hashed)" {...bind("clientSeed")} />
+              <Input placeholder="Nonce" {...bind("nonce")} />
+              <Input placeholder="Rounds" {...bind("round")} />
+            </form>
+            <h2 class="text-center">Output</h2>
+            <form className="py-5">
+              <div className="round-item">
+                <div class="form-group">
+                  <label>Final Result</label>
+                  <input class="form-control" disabled value={str} />
+                </div>
+              </div>
+            </form>
+            <div className="table-wrap">
+              <table>
+                <tbody>
+                  <tr>
+                    {allCards.map((item, index) => (
+                      <td key={index}>{index}</td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {allCards.map((item, index) => (
+                      <td key={index}>
+                        <span className="card">{getCardStr(item)}</span>
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    {allCards.map((item, index) => (
+                      <td key={index}>{item}</td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.render(<Hilo />, document.getElementById("app"));
+    </script>
+  </body>
 </html>
