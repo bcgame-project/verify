@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bullet verify (simple)</title>
+  <link rel="stylesheet" href="./lib/main.css"/>
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css"/>
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    .main { max-width: 760px; margin: 24px auto; }
+    .muted { color: #6c757d; }
+  </style>
+</head>
+<body>
+<div id="app" class="main">
+  <h1 class="text-center pb-3">Bullet verify</h1>
+  <p class="text-center muted">Outputs the random number and the 6-slot sequence.</p>
+  <hr/>
+
+  <!-- Inputs -->
+  <form class="py-3">
+    <h2 class="text-center">Input</h2>
+    <div class="form-group">
+      <input class="form-control" placeholder="Server Seed"
+             :value="server_seed" @input="server_seed = $event.target.value"/>
+    </div>
+    <div class="form-group">
+      <input class="form-control" placeholder="Client Seed"
+             :value="client_seed" @input="client_seed = $event.target.value"/>
+    </div>
+    <div class="form-group">
+      <input class="form-control" placeholder="Nonce"
+             :value="nonce" @input="nonce = normalizeInt($event.target.value, 0)"/>
+    </div>
+  </form>
+
+  <hr/>
+
+  <!-- Outputs -->
+  <form class="py-3">
+    <h2 class="text-center">Output</h2>
+
+    <div class="form-group">
+      <label>Random number (spinChamber [1..6])</label>
+      <input class="form-control" readonly :value="spinChamberDisplay"/>
+    </div>
+
+    <div class="form-group">
+      <label>Sequence (6 slots starting from spinChamber)</label>
+      <input class="form-control" readonly :value="sequenceDisplay"/>
+    </div>
+  </form>
+
+  <hr/>
+
+  <!-- Explanation -->
+  <section class="py-3">
+    <h2 class="text-center">Fair Verification Result Explanation</h2>
+    <div class="mt-2">
+      <p>
+       Numbers 1–6 represent the revolver’s chambers. Chamber 1 always has a bullet, while chambers 2 and 3 may also have bullets depending on difficulty.
+      </p>
+      <p>
+        The result only sets the first chamber; shots then follow in order (e.g., if the first is 5, then 6→1→2→3→4). In this example, the third shot will definitely hit.
+      </p>
+    </div>
+  </section>
+</div>
+
+<script>
+  const qs = tools.queryString();
+
+  new Vue({
+    el: '#app',
+    data: {
+      server_seed: qs.s || '',
+      client_seed: qs.c || '',
+      nonce: Number.isFinite(parseInt(qs.n)) ? parseInt(qs.n) : 0,
+    },
+    computed: {
+      hmacHex() {
+        if (!this.server_seed || !this.client_seed) return '';
+        return CryptoJS.HmacSHA256(`${this.client_seed}:${this.nonce}`, this.server_seed).toString();
+      },
+      // spinChamber = slideWindowNumber(hmac, 6) + 1 → [1..6]
+      spinChamber() {
+        if (!this.hmacHex) return null;
+        // slideWindowNumber(hash, 6) is expected from ./lib/utils.js
+        const v = Math.floor(slideWindowNumber(this.hmacHex, 6)) + 1;
+        return v;
+      },
+      spinChamberDisplay() {
+        return this.spinChamber == null ? '-' : String(this.spinChamber);
+      },
+      // e.g. spinChamber=2 → [2,3,4,5,6,1]
+      sequence() {
+        if (this.spinChamber == null) return [];
+        const arr = [];
+        for (let i = 0; i < 6; i++) {
+          const x = ((this.spinChamber - 1 + i) % 6) + 1;
+          arr.push(x);
+        }
+        return arr;
+      },
+      sequenceDisplay() {
+        return this.sequence.length ? `[${this.sequence.join(',')}]` : '-';
+      }
+    },
+    methods: {
+      normalizeInt(v, def) {
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) ? n : def;
+      }
+    }
+  });
+</script>
+</body>
+</html>
