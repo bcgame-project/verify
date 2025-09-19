@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotpot Verify</title>
+  <link rel="stylesheet" href="./lib/main.css">
+  <link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css">
+  <script src="./lib/vue.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <script src="./lib/tools.js"></script>
+  <script src="./lib/utils.js"></script>
+  <style>
+    .table {
+      font-size: 14px;
+    }
+
+    .dice-result {
+      font-weight: bold;
+      color: #007bff;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="main">
+    <h1 class="text-center pb-5">Hotpot Verify</h1>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Input</h2>
+      <div class="form-group">
+        <label>Hash</label>
+        <input class="form-control" v-model.lazy="initHash" @change="doVerify" />
+      </div>
+      <div class="form-group">
+        <label>Salt</label>
+        <input class="form-control" readonly :value="salt" />
+      </div>
+      <div class="form-group">
+        <label>Amount of games</label>
+        <input class="form-control" v-model.lazy="amount" @change="doVerify" />
+      </div>
+    </form>
+    <hr />
+    <form class="py-5">
+      <h2 class="text-center pb-5">Results</h2>
+      <div class="form-group" style="overflow-x: auto;">
+        <table class="table table-sm table-bordered">
+          <thead>
+            <tr>
+              <th>Game's hash</th>
+              <th>Result</th>
+              <th>Win Area</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, index) in result" :key="index">
+              <td>{{ item.hash }}</td>
+              <td class="dice-result">{{ item.diceResult }}</td>
+              <td class="dice-result">{{ item.winArea.join(', ') }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    function calc(seed, salt) {
+      if (!seed) {
+        return '';
+      }
+      const hash = seed;
+      const message = String(CryptoJS.HmacSHA256(hash, salt));
+      const rawNumber = Math.floor(slideWindowNumber(message, 10000));
+      return rawNumber;
+    }
+
+    let qs = tools.queryString();
+    const app = new Vue({
+      el: "#app",
+      data: {
+        amount: 10,
+        initHash: qs.hash || '',
+        salt: "0000000000000000000301e2801a9a9598bfb114e574a91a887f2132f33047e6",
+        result: [],
+      },
+      created() {
+        this.doVerify();
+      },
+      methods: {
+        doVerify() {
+          let prevHash = null;
+          let list = [];
+          if (this.initHash.length === 0) {
+            return this.result = []
+          }
+          for (let i = 0; i < this.amount; i++) {
+            let hash = String(
+              prevHash ? CryptoJS.SHA256(String(prevHash)) : this.initHash
+            );
+
+            // Calculate sicbo dice results
+            let diceResult = calc(hash, this.salt);
+
+            let result = {
+              hash: hash,
+              diceResult: diceResult,
+              winArea: getWinArea(diceResult),
+            };
+
+            list.push(result);
+            prevHash = hash;
+          }
+          this.result.splice(0, this.result.length, ...list);
+        },
+      },
+    });
+
+    function getWinArea(hotpotGameResult) {
+      if (!hotpotGameResult) {
+        return [];
+      }
+      const result = [];
+      if (hotpotGameResult < 2400) {
+        // 0-2399 (24%)
+        result.push('CRAB_STICK');
+        result.push('MEAT');
+      } else if (hotpotGameResult < 4800) {
+        // 2400-4799 (24%)
+        result.push('CORN');
+        result.push('VEGETABLE');
+      } else if (hotpotGameResult < 6000) {
+        // 4800-5999 (12%)
+        result.push('SHRIMP');
+        result.push('MEAT');
+      } else if (hotpotGameResult < 7200) {
+        // 6000-7199 (12%)
+        result.push('TOFU');
+        result.push('VEGETABLE');
+      } else if (hotpotGameResult < 8000) {
+        // 7200-7999 (8%)
+        result.push('FISH_BALL');
+        result.push('MEAT');
+      } else if (hotpotGameResult < 8800) {
+        // 8000-8799 (8%)
+        result.push('CABBAGE');
+        result.push('VEGETABLE');
+      } else if (hotpotGameResult < 9200) {
+        // 8800-9199 (4%)
+        result.push('PORK_BELLY');
+        result.push('MEAT');
+      } else if (hotpotGameResult < 9600) {
+        // 9200-9599 (4%)
+        result.push('CUCUMBER_SLICES');
+        result.push('VEGETABLE');
+      } else if (hotpotGameResult < 9800) {
+        // 9600-9799 (2%)
+        result.push('BEEF_ROLL');
+        result.push('MEAT');
+      } else {
+        // 9800-9999 (2%)
+        result.push('ENOKI_MUSHROOMS');
+        result.push('VEGETABLE');
+      }
+      return result;
+    }
+
+  </script>
+</body>
+
+</html>
+
+</html>

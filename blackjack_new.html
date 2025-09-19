@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Blackjack Verify</title>
+  <link rel="stylesheet" href="./lib/highlight.css">
+  <script src="./lib/highlight.min.js"></script>
+  <script src="./lib/crypto-js.js"></script>
+  <style>
+    body{
+      font-family: -apple-system,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","WenQuanYi Micro Hei","Microsoft Yahei",sans-serif;
+      font-size: 14px; color: #fff;
+      background-color: #202733;
+    }
+    :focus{
+      outline: none;
+    }
+    ::-webkit-scrollbar {
+      background-color:#303e56;
+      border-radius: 3px;
+      height: 6px;
+      width: 6px
+    }
+    ::-webkit-scrollbar-corner{
+      background-color: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #6c7d9b;
+      border-radius: 3px
+    }
+    input[type="text"]{
+      box-sizing: border-box; width: 260px;
+      border: 2px solid #F7BB0A;
+      background-color: transparent;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 3px;
+      line-height: 20px;
+    }
+    button{
+      box-sizing: border-box; width: 260px;
+      color: #fff;
+      background-color: #F7BB0A;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 3px;
+    }
+    .tc{
+      text-align: center;
+    }
+    .form-item{
+      margin: 16px 0;
+    }
+    .cardbox{
+      position: relative;
+      display: inline-block; width: 20px; height: 50px; padding: 15px 15px;
+    }
+    .card{
+      position: absolute; cursor: pointer;
+      width: 20px; height: 30px;
+      background-color: #e0e4eb;
+      border-radius: 2px;
+      line-height: 16px;
+      box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }
+    .cardbox.red{
+      color: #f00;
+    }
+    .cardbox.black{
+      color: #000;
+    }
+    .card .point{
+      position: absolute;
+      left: -2px; top: 0px; width: 20px;
+      text-align: center;
+    }
+    .card .flower{
+      position: absolute; bottom: 1px; right: 2px;
+      font-size: 20px;
+    }
+    .cardbox .index{
+      position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; color: #fff;
+      font-size: 12px; line-height: 20px;
+    }
+    .cardbox.active .card, .cardbox:hover .card{
+      transform: scale(2);
+    }
+    .cardbox.active .index, .cardbox:hover .index{
+      bottom: 0;
+    }
+    .script_box{
+    }
+    .script_box>code{
+      height: 100%;
+      box-sizing: border-box;
+    }
+    #form{
+      margin: 80px auto;
+    }
+    #cards{
+      clear: both;
+    }
+    #public_key{
+    }
+  </style>
+</head>
+<body>
+  <div id="form">
+    <div class="form-item tc">
+      <h3>Blackjack Verify</h3>
+    </div>
+    <div class="form-item tc">
+      <input id="serverSeed" type="text" placeholder="ServerSeed">
+      <input id="clientSeed" type="text" placeholder="ClientSeed">
+      <input id="nonce" type="text" placeholder="">
+    </div>
+    <div class="form-item tc">
+      <button id="button">Verify</button>
+    </div>
+  </div>
+  <div id="cards" class="form-item"></div>
+  <h2>Card generation algorithm</h2>
+  <pre class="script_box"><code id="card_script_clone" class="javascript"></code></pre>
+  <script>
+    let serverSeed, clientSeed, nonce, issus, range, search = decodeURIComponent(window.location.search);
+    serverSeed = search.match(/[\?|&]s=([^&]+)/);
+    serverSeed = serverSeed ? serverSeed[1] : "";
+    clientSeed = search.match(/[\?|&]c=([^&]+)/);
+    clientSeed = clientSeed ? clientSeed[1] : "";
+    nonce = search.match(/[\?|&]n=([^&]+)/);
+    nonce = nonce ? nonce[1] : "0";
+  </script>
+  <script id="card_script">
+    const MAX_BORDER = Math.pow(2, -53);
+
+    function slideWindowNumber(hash, events) {
+        let index = BigInt('0x' + hash.substring(0, 15));
+        index = Number(index % BigInt(47));
+
+        let num = BigInt('0x' + hash.substring(index, index + 14)) >> BigInt(3);
+        num = Number(num) * MAX_BORDER;
+        return num * events;
+    }
+
+    (function(){
+      const CARDS = " ,A,2,3,4,5,6,7,8,9,10,J,Q,K".split(",");
+      const FLOWER = ["♠", "♥", "♣", "♦"];
+      let allCards = [];
+      const allCards1 = [];
+      const allCards2 = [161, 180, 199, 218, 162, 205, 181, 200, 219, 163, 182, 220, 201, 177, 196, 215, 170, 178, 221, 197, 216, 171, 179, 198, 172, 217, 193, 212, 167, 186, 194, 173, 213, 168, 187, 195, 214, 188, 169, 209, 164, 183, 202, 210, 189, 165, 184, 203, 211, 166, 204, 185];
+      for ( let c = 10; c <= 13; c++ ) {
+        for( let v = 1; v <= 13; v++ ) {
+          allCards1.push( c * 16 + v );
+        }
+      }
+
+      let $button = document.getElementById("button");
+      let $serverSeed = document.getElementById("serverSeed");
+      let $clientSeed = document.getElementById("clientSeed");
+      let $nonce = document.getElementById("nonce");
+      let $cards = document.getElementById("cards");
+
+      function createCards () {
+        const cards = [];
+        for(let i = 0; i < 52; i++) {
+          const hash = String(CryptoJS.HmacSHA256($clientSeed.value + ':' + $nonce.value + ':' + i, $serverSeed.value));
+          const index = parseInt(slideWindowNumber(hash, 52));
+          const card = allCards1[index];
+          cards.push({card, hash});
+        }
+
+        return cards;
+      }
+
+      function createCardFram (card, index) {
+        let flowerIndex = (card & 240) / 16 - 10;
+        let flower = FLOWER[flowerIndex];
+        let point = CARDS[card % 16];
+        let style = flowerIndex % 2 === 0 ? "black" : "red";
+        let classNames = ["cardbox", style];
+        if (range && index >= range[0] && index < range[1]) {
+          classNames.push("active");
+        }
+        return '<div class="'+classNames.join(" ")+'"><div class="card"><div class="flower">'
+          +flower+'</div><div class="point">'
+          +point+'</div></div><div class="index">'
+          +index+'</div></div>';
+      }
+
+      function generate () {
+        let list = createCards();
+
+        let cardsfram = list.map(function (item, index) {
+          return createCardFram(item.card, index);
+        });
+        $cards.innerHTML = cardsfram.join('');
+      }
+
+      $button.addEventListener("click", function(){
+        let query = '?s=' + $serverSeed.value + '&c=' + $clientSeed.value + '&n=' + $nonce.value;
+        location.replace(location.href.replace(/\?*.*$/, query));
+      }, false)
+
+      if (clientSeed) {
+        $clientSeed.value = clientSeed;
+      }
+
+      if (nonce) {
+        $nonce.value = nonce;
+      }
+
+      if (serverSeed) {
+        $serverSeed.value = serverSeed;
+        generate();
+      }
+
+    })();
+  </script>
+  <script>
+    (function(){
+      let clone = document.getElementById("card_script_clone");
+      let script = document.getElementById("card_script");
+      clone.innerText = script.innerText;
+      hljs.initHighlightingOnLoad();
+    })();
+  </script>
+</body>
+</html>
