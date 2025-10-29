@@ -164,7 +164,7 @@
         const isPlayerGetCard = palyerPoint % 10 < 6;
         const isBankerEnd = bankerPoint % 10 >= 8;
         if(isPlayerGetCard && !isBankerEnd) {
-          player.push(new Card(resultList[4]));
+          player.push(createCardFram(resultList[4]));
         }
         const thirdCardPoint = player[2] ? getPoint([player[2]]) % 10 : -1;
         const flag = canBankerGetCard(bankerPoint % 10, palyerPoint % 10, thirdCardPoint);
