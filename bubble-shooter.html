@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Bubble Shooter verify</title>
+	<link rel="stylesheet" href="./lib/main.css" />
+	<link rel="stylesheet" href="./lib/bootstrap/css/bootstrap.min.css" />
+	<script src="./lib/vue.min.js"></script>
+	<script src="./lib/crypto-js.js"></script>
+	<script src="./lib/tools.js"></script>
+	<script src="./lib/utils.js"></script>
+	<style>
+		body {
+			font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+		}
+
+		.main {
+			max-width: 760px;
+			margin: 24px auto;
+		}
+
+		.muted {
+			color: #6c757d;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="app" class="main">
+		<h1 class="text-center pb-3">Bubble Shooter verify</h1>
+		<p class="text-center muted">Outputs the random number and the 6-slot sequence.</p>
+		<hr />
+
+		<!-- Inputs -->
+		<form class="py-3">
+			<h2 class="text-center">Input</h2>
+			<div class="form-group">
+				<label>Server Seed</label>
+				<input class="form-control" placeholder="Server Seed" :value="server_seed"
+					@input="server_seed = $event.target.value" />
+			</div>
+			<div class="form-group">
+				<label>Client Seed</label>
+
+				<input class="form-control" placeholder="Client Seed" :value="client_seed"
+					@input="client_seed = $event.target.value" />
+			</div>
+			<div class="form-group">
+				<label>Nonce</label>
+
+				<input class="form-control" placeholder="Nonce" :value="nonce"
+					@input="nonce = normalizeInt($event.target.value, 0)" />
+			</div>
+
+			<div class="form-group">
+				<label>ColorId: {{ computedColorId }}</label>
+
+				<input class="form-control" placeholder="ColorId" :value="colorId"
+					@input="colorId = normalizeInt($event.target.value, 0)" />
+			</div>
+
+			<div class="form-group">
+				<label>Difficultly</label>
+
+				<input class="form-control" placeholder="Difficultly" :value="difficultly"
+					@input="difficultly = normalizeInt($event.target.value, 0)" />
+			</div>
+
+			<div class="form-group">
+				<label>GameResult</label>
+
+				<input class="form-control" placeholder="GameResult" :value="gameResult"
+					@input="gameResult = normalizeInt($event.target.value, 0)" />
+			</div>
+			<div class="form-group">
+				<label>RandomNumber</label>
+
+				<input class="form-control" placeholder="RandomNumber" :value="randomNumber"
+					@input="randomNumber = normalizeInt($event.target.value, 0)" />
+			</div>
+		</form>
+
+		<hr />
+
+		<!-- Outputs -->
+		<form class="py-3">
+			<h2 class="text-center">Output</h2>
+
+			<div class="form-group">
+				<label>Game result</label>
+				<input class="form-control" readonly :value="returnGameResult" />
+			</div>
+
+
+			<div class="form-group">
+				<label>Payout</label>
+				<input class="form-control" readonly placeholder="Payout" :value="returnPayout"
+					@input="returnPayout = normalizeInt($event.target.value, 0)" />
+			</div>
+
+			<div class="form-group">
+				<label>Random number</label>
+				<input class="form-control" readonly placeholder="Random number" :value="returnRandomNumber"
+					@input="returnRandomNumber = normalizeInt($event.target.value, 0)" />
+			</div>
+		</form>
+
+		<hr />
+
+		<!-- Explanation -->
+		<section class="py-3">
+			<h2 class="text-center">Payout Table</h2>
+			<div class="mt-2">
+				<div v-for="(data, key) in tableData" :key="key" class="table-container w-full mb-4">
+					<h2 class="table-title">{{ key }}</h2>
+					<table class="w-full" border="1">
+						<thead class="w-full">
+							<tr class="w-full">
+								<th class="w-12 px-2 text-center">Odds</th>
+								<th class="w-12 px-2 text-center">Range</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="(item, index) in data" :key="index">
+								<td class="text-center px-2	">{{ item.payout / 100 }}x</td>
+								<td class="text-center px-2">
+									<span v-if="index === 0">≤ {{ item.max }}</span>
+									<span v-else>{{ data[index-1].max + 1 }} - {{ item.max }}</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</section>
+	</div>
+
+	<script>
+		const qs = tools.queryString();
+
+		new Vue({
+			el: '#app',
+			data: {
+				server_seed: qs.s || '',
+				client_seed: qs.c || '',
+				nonce: Number.isFinite(parseInt(qs.n)) ? parseInt(qs.n) : 0,
+				colorId: Number.isFinite(parseInt(qs.cd)) ? parseInt(qs.cd) : 0,
+				difficultly: Number.isFinite(parseInt(qs.dy)) ? parseInt(qs.dy) : 0,
+				gameResult: Number.isFinite(parseInt(qs.gr)) ? parseInt(qs.gr) : 0,
+				randomNumber: Number.isFinite(parseInt(qs.rn)) ? parseInt(qs.rn) : 0,
+				payout: Number.isFinite(parseInt(qs.py)) ? parseInt(qs.py) : 0,
+				getrtp: 0.98,
+				DEFAULT_RTP: 99,
+				MULTI_RTP: 100,
+				tableData: {
+					"RAINBOW GREEN": [
+						{ "max": 20, "payout": 120 },
+						{ "max": 30, "payout": 130 },
+						{ "max": 40, "payout": 150 },
+						{ "max": 94, "payout": 200 },
+						{ "max": 98, "payout": 500 },
+						{ "max": 100, "payout": 1000 }
+					],
+					"RAINBOW YELLOW": [
+						{ "max": 20, "payout": 200 },
+						{ "max": 30, "payout": 200 },
+						{ "max": 40, "payout": 300 },
+						{ "max": 94, "payout": 500 },
+						{ "max": 98, "payout": 1000 },
+						{ "max": 100, "payout": 5000 }
+					],
+
+					"RAINBOW BLUE": [
+						{ "max": 20, "payout": 200 },
+						{ "max": 30, "payout": 200 },
+						{ "max": 40, "payout": 300 },
+						{ "max": 94, "payout": 500 },
+						{ "max": 98, "payout": 1000 },
+						{ "max": 100, "payout": 5000 }
+					],
+
+					"JACKPOT": [
+						{ "max": 10, "payout": 300 },
+						{ "max": 30, "payout": 500 },
+						{ "max": 40, "payout": 700 },
+						{ "max": 94, "payout": 1000 },
+						{ "max": 98, "payout": 1500 },
+						{ "max": 100, "payout": 10000 }
+					]
+				}
+			},
+			computed: {
+				hmacHex() {
+					if (!this.server_seed || !this.client_seed) return '';
+					return CryptoJS.HmacSHA256(`${this.client_seed}:${this.nonce}`, this.server_seed).toString();
+				},
+				returnGameResult() {
+					const rtp = this.MULTI_RTP * this.getrtp;
+					const value = calcByRtp(this.server_seed, this.client_seed, this.nonce, Math.min(
+						rtp,
+						this.DEFAULT_RTP,
+					));
+					return value;
+				},
+				returnPayout() {
+					const value = getOdds(this.payout, this.returnGameResult, this.returnRandomNumber);
+					return value;
+				},
+				returnRandomNumber() {
+					const value = getPayoutByRandomOptimized(this.colorId, this.randomNumber);
+					return value;
+				},
+				computedColorId() {
+					return this.getColorId(this.colorId);
+				}
+			},
+			methods: {
+				normalizeInt(v, def) {
+					const n = parseInt(v, 10);
+					return Number.isFinite(n) ? n : def;
+				},
+				getColorId(colorId) {
+					const ColorId = {
+						0: 'PLACEHOLDER',
+						1: 'GREEN',
+						2: 'YELLOW',
+						3: 'BLUE',
+						4: 'PURPLE',
+						5: 'RAINBOW_GREEN',
+						6: 'RAINBOW_YELLOW',
+						7: 'RAINBOW_BLUE',
+						8: 'JACKPOT',
+					}
+					return ColorId[colorId];
+				}
+			}
+		});
+
+		/**
+		 * 将 hex 字符串转换为字节数组（用于 salt 分支）
+		 */
+		function hexToBytes(hex) {
+			const bytes = [];
+			for (let i = 0; i < hex.length; i += 2) {
+				bytes.push(parseInt(hex.substr(i, 2), 16));
+			}
+			return bytes;
+		}
+
+		/**
+		 * 等价于 Java: calcByRtp(String serverSeed, String clientSeed, long nonce, Integer rtp)
+		 */
+		function calcByRtp(serverSeed, clientSeed, nonce, rtp) {
+			const key = `${clientSeed}:${nonce}`;
+			const hash = CryptoJS.HmacSHA256(key, serverSeed).toString();
+			return pointFromHashAndRtp(hash, null, rtp);
+		}
+
+		/**
+		 * 等价于 Java: pointFromHashAndRtp(String seed, String salt, Integer rtp)
+		 * 使用 BigInt 实现
+		 */
+		function pointFromHashAndRtp(seed, salt, rtp) {
+			const nBits = 52;
+
+			// 如果提供了 salt，进行二次 HMAC
+			if (salt != null && salt !== '') {
+				const seedBytes = hexToBytes(seed);
+				seed = CryptoJS.HmacSHA256(seedBytes, salt).toString();
+			}
+
+			// 取前 52 bit = 13 个十六进制字符 (52 / 4 = 13)
+			const hexPart = seed.substring(0, nBits / 4);
+
+			// 使用 BigInt 解析十六进制
+			const r = BigInt('0x' + hexPart);
+
+			// 2^52 作为 BigInt
+			const twoPow52 = 1n << 52n; // 或者 BigInt(2**52)
+
+			// x = 1 - (r / 2^52)
+			// 为了避免浮点数，我们保持整数运算：
+			// x = (twoPow52 - r) / twoPow52
+
+			// 计算 (rtp % 100) / x = (rtp % 100) * twoPow52 / (twoPow52 - r)
+			const rtpMod100 = BigInt(rtp % 100);
+
+			// 计算分子和分母
+			const numerator = rtpMod100 * twoPow52;
+			const denominator = twoPow52 - r;
+
+			// 执行整数除法（相当于 Math.floor）
+			let x = numerator / denominator;
+
+			// 转换为 Number（因为结果不会超过安全整数范围）
+			const result = Number(x);
+
+			// Java: Math.max(100L, x.longValue())
+			return Math.max(100, result);
+		}
+
+		// 辅助函数：十六进制字符串转字节数组（保持原样）
+		function hexToBytes(hex) {
+			const bytes = [];
+			for (let i = 0; i < hex.length; i += 2) {
+				bytes.push(parseInt(hex.substr(i, 2), 16));
+			}
+			return bytes;
+		}
+
+
+		function getOdds(userPayout, returnGameResult, returnRandomNumber) {
+			// payout 取 random 还是固定的
+			const payout = (returnRandomNumber === 0) ? userPayout : returnRandomNumber;
+
+			// 如果 payout > gameValue 则赔率为 0
+			if (payout > returnGameResult) {
+				return 0;
+			}
+
+			// 赔率 = payout / 100，例如 payout=250 -> 2.5x
+			// 使用更精确的计算方法
+			const odds = payout / 100;
+
+			// 保留1位小数，向下取整
+			return Math.floor(odds * 10) / 10;
+		}
+
+
+
+		// ---- 统一读取区间并返回赔率 ----
+		function getPayoutByRandom(colorId, randomNumber) {
+			const config = PAYOUT_TABLE.get(colorId);
+			if (!config) return 0;
+
+			// 找到第一个大于等于 randomNumber 的键
+			let resultPayout = 0;
+			for (const [maxValue, payout] of config) {
+				if (randomNumber <= maxValue) {
+					resultPayout = payout;
+					break;
+				}
+			}
+
+			return resultPayout;
+		}
+
+		// 如果需要更高效的查找（假设配置已排序）
+		function getPayoutByRandomOptimized(colorId, randomNumber) {
+			// 常量定义
+			const RAINBOW_GREEN = 5;
+			const RAINBOW_YELLOW = 6;
+			const RAINBOW_BLUE = 7;
+			const JACKPOT = 8;
+
+			// 颜色赔率区间配置
+			// key = colorId 
+			// value = Map<最大随机值, payout>
+			const PAYOUT_TABLE = new Map();
+
+			// ---- 静态加载所有区间定义 ----
+			// RAINBOW_GREEN → 期望 2x
+			const rainbowGreen = new Map([
+				[20, 120],
+				[30, 130],
+				[40, 150],
+				[94, 200],
+				[98, 500],
+				[100, 1000]
+			]);
+			PAYOUT_TABLE.set(RAINBOW_GREEN, rainbowGreen);
+
+			// RAINBOW_YELLOW & RAINBOW_BLUE → 期望 5x
+			const rainbowYellowBlue = new Map([
+				[20, 200],
+				[30, 200],
+				[40, 300],
+				[94, 500],
+				[98, 1000],
+				[100, 5000]
+			]);
+			PAYOUT_TABLE.set(RAINBOW_YELLOW, rainbowYellowBlue);
+			PAYOUT_TABLE.set(RAINBOW_BLUE, rainbowYellowBlue);
+
+			// JACKPOT → 期望 10x
+			const jackpot = new Map([
+				[10, 300],
+				[30, 500],
+				[40, 700],
+				[94, 1000],
+				[98, 1500],
+				[100, 10000]
+			]);
+			PAYOUT_TABLE.set(JACKPOT, jackpot);
+			const config = PAYOUT_TABLE.get(colorId);
+			if (!config) return 0;
+
+			// 将 Map 转换为数组并排序
+			const entries = Array.from(config.entries()).sort((a, b) => a[0] - b[0]);
+
+			for (const [maxValue, payout] of entries) {
+				if (randomNumber <= maxValue) {
+					return payout;
+				}
+			}
+
+			return 0;
+		}
+
+		// ---- 生成随机数 ----
+		function getRandomNumber(serverSeed, clientSeed, nonce, round) {
+			const key = `${clientSeed}:${nonce}:${round}`;
+
+			// 使用 crypto-js 进行 HMAC-SHA256
+			const hash = CryptoJS.HmacSHA256(key, serverSeed).toString(CryptoJS.enc.Hex);
+
+			// random [1,100]
+			const randomNumber = slideWindowNumber(hash, 100) + 1;
+			return randomNumber;
+		}
+
+		// 假设的 slideWindowNumber 函数（需要根据实际实现补充）
+		function slideWindowNumber(hash, max) {
+			// 这里需要根据实际的 GenerateRandomV2.slideWindowNumber 实现来编写
+			// 这是一个示例实现：从哈希中提取数字
+			const segment = hash.substring(0, 8); // 取前8个字符
+			const num = parseInt(segment, 16); // 转换为十进制
+			return num % max;
+		}
+
+	</script>
+</body>
+
+</html>
