@@ -31,7 +31,6 @@
 <body>
 	<div id="app" class="main">
 		<h1 class="text-center pb-3">Bubble Shooter verify</h1>
-		<p class="text-center muted">Outputs the random number and the 6-slot sequence.</p>
 		<hr />
 
 		<!-- Inputs -->
@@ -62,25 +61,6 @@
 					@input="colorId = normalizeInt($event.target.value, 0)" />
 			</div>
 
-			<div class="form-group">
-				<label>Difficultly</label>
-
-				<input class="form-control" placeholder="Difficultly" :value="difficultly"
-					@input="difficultly = normalizeInt($event.target.value, 0)" />
-			</div>
-
-			<div class="form-group">
-				<label>GameResult</label>
-
-				<input class="form-control" placeholder="GameResult" :value="gameResult"
-					@input="gameResult = normalizeInt($event.target.value, 0)" />
-			</div>
-			<div class="form-group">
-				<label>RandomNumber</label>
-
-				<input class="form-control" placeholder="RandomNumber" :value="randomNumber"
-					@input="randomNumber = normalizeInt($event.target.value, 0)" />
-			</div>
 		</form>
 
 		<hr />
@@ -101,8 +81,8 @@
 					@input="returnPayout = normalizeInt($event.target.value, 0)" />
 			</div>
 
-			<div class="form-group">
-				<label>Random number</label>
+			<div class="form-group" v-if="isRainbowColorId">
+				<label>Random number: {{ computedColorId }}</label>
 				<input class="form-control" readonly placeholder="Random number" :value="returnRandomNumber"
 					@input="returnRandomNumber = normalizeInt($event.target.value, 0)" />
 			</div>
@@ -114,19 +94,20 @@
 		<section class="py-3">
 			<h2 class="text-center">Payout Table</h2>
 			<div class="mt-2">
-				<div v-for="(data, key) in tableData" :key="key" class="table-container w-full mb-4">
-					<h2 class="table-title">{{ key }}</h2>
-					<table class="w-full" border="1">
-						<thead class="w-full">
+				<div v-for="(data, key) in tableData" :key="key" class="table-container w-full mb-4 px-2 py-2">
+					<h3 class="table-title text-center">{{ key }}</h3>
+					<table class="w-full " style="width: 100%;" border="1">
+						<thead class="w-full" style="width: 100%;">
 							<tr class="w-full">
-								<th class="w-12 px-2 text-center">Odds</th>
-								<th class="w-12 px-2 text-center">Range</th>
+								<th class=" w-24 text-center">Odds</th>
+								<th class=" w-24 text-center">Range</th>
 							</tr>
 						</thead>
-						<tbody>
-							<tr v-for="(item, index) in data" :key="index">
-								<td class="text-center px-2	">{{ item.payout / 100 }}x</td>
-								<td class="text-center px-2">
+						<tbody class="w-full" style="width: 100%;">
+							<tr v-for="(item, index) in data" :key="index"
+								:style="key === computedColorId && item.payout === randomPayout ? 'background-color: rgb(26, 169, 100);' : ''">
+								<td class="text-center w-24 px-12	">{{ item.payout / 100 }}x</td>
+								<td class="text-center w-24 px-12">
 									<span v-if="index === 0">≤ {{ item.max }}</span>
 									<span v-else>{{ data[index-1].max + 1 }} - {{ item.max }}</span>
 								</td>
@@ -156,7 +137,7 @@
 				DEFAULT_RTP: 99,
 				MULTI_RTP: 100,
 				tableData: {
-					"RAINBOW GREEN": [
+					"RAINBOW_GREEN": [
 						{ "max": 20, "payout": 120 },
 						{ "max": 30, "payout": 130 },
 						{ "max": 40, "payout": 150 },
@@ -164,7 +145,7 @@
 						{ "max": 98, "payout": 500 },
 						{ "max": 100, "payout": 1000 }
 					],
-					"RAINBOW YELLOW": [
+					"RAINBOW_YELLOW": [
 						{ "max": 20, "payout": 200 },
 						{ "max": 30, "payout": 200 },
 						{ "max": 40, "payout": 300 },
@@ -172,8 +153,7 @@
 						{ "max": 98, "payout": 1000 },
 						{ "max": 100, "payout": 5000 }
 					],
-
-					"RAINBOW BLUE": [
+					"RAINBOW_BLUE": [
 						{ "max": 20, "payout": 200 },
 						{ "max": 30, "payout": 200 },
 						{ "max": 40, "payout": 300 },
@@ -181,7 +161,6 @@
 						{ "max": 98, "payout": 1000 },
 						{ "max": 100, "payout": 5000 }
 					],
-
 					"JACKPOT": [
 						{ "max": 10, "payout": 300 },
 						{ "max": 30, "payout": 500 },
@@ -205,17 +184,31 @@
 					));
 					return value;
 				},
-				returnPayout() {
-					const value = getOdds(this.payout, this.returnGameResult, this.returnRandomNumber);
+				returnRandomNumber() {
+					if (!this.isRainbowColorId) {
+						return 0
+					}
+
+					const value = getRandomNumber(this.server_seed, this.client_seed, this.nonce, 0);
 					return value;
 				},
-				returnRandomNumber() {
-					const value = getPayoutByRandomOptimized(this.colorId, this.randomNumber);
-					return value;
+				returnPayout() {
+					const value = getOdds(this.payout, this.returnGameResult, this.randomPayout);
+					return Math.floor(value * 100) / 10000 + 'x';
 				},
 				computedColorId() {
 					return this.getColorId(this.colorId);
-				}
+				},
+				isRainbowColorId() {
+					return [5, 6, 7, 8].includes(Number(this.colorId));
+				},
+				colorTableList() {
+					return this.tableData?.[this.computedColorId] ?? [];
+				},
+				randomPayout() {
+					const random = this.isRainbowColorId ? this.colorTableList.find(item => item.max >= this.returnRandomNumber)?.payout : this.payout;
+					return random;
+				},
 			},
 			methods: {
 				normalizeInt(v, def) {
@@ -311,22 +304,49 @@
 			return bytes;
 		}
 
-
-		function getOdds(userPayout, returnGameResult, returnRandomNumber) {
+		function getOdds(payout, gameValue, randomPayOut) {
 			// payout 取 random 还是固定的
-			const payout = (returnRandomNumber === 0) ? userPayout : returnRandomNumber;
-
-			// 如果 payout > gameValue 则赔率为 0
-			if (payout > returnGameResult) {
-				return 0;
+			if (randomPayOut === 0) {
+				// 非彩色球
+				if (BigInt(payout) > gameValue) {
+					return "0.0";
+				}
+				// 使用 BigInt 进行高精度除法
+				return divideWithPrecision(BigInt(payout), 100n, 1);
+			} else {
+				// 彩色球
+				if (BigInt(payout) > gameValue) {
+					return "0.0";
+				}
+				// 使用 BigInt 进行高精度除法
+				return divideWithPrecision(BigInt(randomPayOut), 100n, 1);
 			}
+		}
 
-			// 赔率 = payout / 100，例如 payout=250 -> 2.5x
-			// 使用更精确的计算方法
-			const odds = payout / 100;
+		/**
+		 * 高精度除法函数，模拟 Java 的 BigDecimal.divide
+		 * @param {bigint} dividend - 被除数
+		 * @param {bigint} divisor - 除数
+		 * @param {number} scale - 小数位数
+		 * @returns {string} 保留指定小数位数的字符串结果
+		 */
+		function divideWithPrecision(dividend, divisor, scale) {
+			// 乘以 10^scale 来保留小数
+			const multiplier = 10n ** BigInt(scale);
+			const result = (dividend * multiplier * 100n) / divisor; // 乘以100对应原逻辑
 
-			// 保留1位小数，向下取整
-			return Math.floor(odds * 10) / 10;
+			// 转换为字符串并插入小数点
+			const resultStr = result.toString();
+
+			if (resultStr.length <= scale) {
+				// 如果结果长度小于等于小数位数，前面补0
+				return '0.' + resultStr.padStart(scale, '0');
+			} else {
+				// 插入小数点
+				const integerPart = resultStr.slice(0, -scale);
+				const decimalPart = resultStr.slice(-scale);
+				return integerPart + '.' + decimalPart;
+			}
 		}
 
 
@@ -410,26 +430,62 @@
 			return 0;
 		}
 
-		// ---- 生成随机数 ----
+
+		/**
+		 * 生成随机数（1-100）
+		 * @param {string} serverSeed - 服务器种子
+		 * @param {string} clientSeed - 客户端种子
+		 * @param {bigint} nonce - 随机数
+		 * @param {bigint} round - 轮次
+		 * @returns {number} 1-100之间的随机整数
+		 */
 		function getRandomNumber(serverSeed, clientSeed, nonce, round) {
 			const key = `${clientSeed}:${nonce}:${round}`;
-
-			// 使用 crypto-js 进行 HMAC-SHA256
-			const hash = CryptoJS.HmacSHA256(key, serverSeed).toString(CryptoJS.enc.Hex);
+			const hash = CryptoJS.HmacSHA256(key, serverSeed).toString(); // 假设已有 hmacSHA256 实现
 
 			// random [1,100]
 			const randomNumber = slideWindowNumber(hash, 100) + 1;
 			return randomNumber;
 		}
 
-		// 假设的 slideWindowNumber 函数（需要根据实际实现补充）
-		function slideWindowNumber(hash, max) {
-			// 这里需要根据实际的 GenerateRandomV2.slideWindowNumber 实现来编写
-			// 这是一个示例实现：从哈希中提取数字
-			const segment = hash.substring(0, 8); // 取前8个字符
-			const num = parseInt(segment, 16); // 转换为十进制
-			return num % max;
+		/**
+		 * 从指定索引计算数字
+		 * @param {string} hash - 哈希字符串
+		 * @param {number} beginIndex - 起始索引
+		 * @param {number} events - 事件数量
+		 * @returns {number} 计算结果
+		 */
+		function calNumberFromIndex(hash, beginIndex, events) {
+			// 使用 BigInt 处理大整数，避免精度丢失
+			const hexStr = hash.substring(beginIndex, beginIndex + 14);
+			const numBigInt = BigInt('0x' + hexStr) >> 3n;
+
+			// 转换为浮点数进行计算
+			const num = Number(numBigInt);
+			const MAX_BORDER = 1 / Math.pow(2, 53);
+
+			const result = num * MAX_BORDER;
+
+			return Math.floor(result * events);
 		}
+
+		/**
+		 * 滑动窗口算法
+		 * @param {string} hash - 哈希字符串
+		 * @param {number} events - 事件数量
+		 * @returns {number} 随机数
+		 */
+		function slideWindowNumber(hash, events) {
+			// 使用 BigInt 解析前15个十六进制字符
+			const hexStr = hash.substring(0, 15);
+			let indexBigInt = BigInt('0x' + hexStr);
+
+			// 使用质数让影响结果的字符更分散
+			indexBigInt = indexBigInt % 47n;
+
+			return calNumberFromIndex(hash, Number(indexBigInt), events);
+		}
+
 
 	</script>
 </body>
