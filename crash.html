@@ -144,12 +144,7 @@
       </div>
       <hr />
       <div class="container">
-        <p>
-          The following sites have purchased a non-distributable copy of the
-          previous version of bc.game’s source code, exempting them from the
-          requirements of the AGPL:
-        </p>
-        <p><a target="_blank" href="https://bc.game">https://bc.game</a></p>
+        <p><strong>Provably Fair</strong> - This verification tool allows you to independently verify that game results are fair and unmanipulated. The outcome is determined by cryptographic hash functions (HMAC-SHA256) combining the server seed, client seed, and nonce, ensuring transparent and tamper-proof results.</p>
       </div>
       <hr />
       <div class="container">
@@ -177,6 +172,18 @@
             >https://bitcointalk.org/index.php?topic=5416694</a
           >
         </p>
+        <p>
+          We made the decision to update Crash using a salted hash as requested
+          by our players in order to provide the most randomized and fair
+          results possible after Bet
+          <span class="has-text-info"># 9614371</span>. For further details,
+          please visit
+          <a
+            target="_blank"
+            href="https://bitcointalk.org/index.php?topic=5594155"
+            >https://bitcointalk.org/index.php?topic=5594155</a
+          >
+        </p>
       </div>
       <hr />
       <div class="container">
@@ -200,7 +207,7 @@
               type="text"
               id="game_salt_input"
               placeholder="Salt"
-              value="0000000000000000000301e2801a9a9598bfb114e574a91a887f2132f33047e6"
+              value="000000000000000000010283162e089cc99f643ee5043141412e839945afe2f9"
             />
             <span class="icon is-small is-left"
               ><i class="fa fa-filter"></i
@@ -361,12 +368,15 @@
       const query = new URLSearchParams(location.search);
       r = query.get("r") ? parseInt(Number(query.get("r")), 2) : 1;
       const version = query.get("v");
+      var SALT_SWITCH_GAME_ID = 9614372;
+      var OLD_SALT =
+        "0000000000000000000301e2801a9a9598bfb114e574a91a887f2132f33047e6";
       if (version === "v1") {
         $("#game_salt_input").val("");
       } else if (version === "v2") {
-        $("#game_salt_input").val(
-          "0000000000000000000301e2801a9a9598bfb114e574a91a887f2132f33047e6"
-        );
+        $("#game_salt_input").val(OLD_SALT);
+      } else if (version && Number(version) < SALT_SWITCH_GAME_ID) {
+        $("#game_salt_input").val(OLD_SALT);
       }
       if (/hash=/.test(hash_url)) {
         var hash = hash_url.match(/hash=[0-9a-zA-z]+/)[0].replace(/hash=/, "");
