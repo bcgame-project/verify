@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sheetsee.js Demo</title>
+<link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
+<style>
+  body { padding: 2rem 0; }
+  .stat-card .display-6 { font-weight: 600; }
+  code { white-space: nowrap; }
+  th[role="button"] { cursor: pointer; user-select: none; }
+  th[role="button"]::after { content: " \2195"; opacity: 0.4; font-size: 0.8em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="mb-1">Sheetsee.js Demo</h1>
+  <p class="text-muted">
+    A spreadsheet as a database &mdash; fetch rows from a published Google Sheet
+    and visualize them with tables and summary stats. Loads a built-in sample
+    dataset so it works offline.
+  </p>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <form id="loader-form" class="row g-2 align-items-end">
+        <div class="col-md-7">
+          <label for="sheet-key" class="form-label">Published Google Sheet key</label>
+          <input type="text" class="form-control" id="sheet-key"
+                 placeholder="e.g. 1aBcD...spreadsheet key">
+          <div class="form-text">
+            In Google Sheets: <em>File &rarr; Share &rarr; Publish to web</em>, then
+            paste the spreadsheet key (the long id in the URL).
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label for="sheet-name" class="form-label">Sheet/tab name (optional)</label>
+          <input type="text" class="form-control" id="sheet-name" placeholder="Sheet1">
+        </div>
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary">Load</button>
+        </div>
+      </form>
+      <div id="status" class="mt-2"></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4" id="stats"></div>
+
+  <div class="d-flex align-items-center mb-2 gap-2">
+    <input type="search" id="search" class="form-control" style="max-width: 20rem;"
+           placeholder="Search all columns...">
+    <span class="text-muted" id="row-count"></span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead id="table-head"></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="lib/sheetsee.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // Offline sample dataset (same shape the original sheetsee docs used).
+  var SAMPLE = [
+    { name: 'Coco', breed: 'Teacup Maltese', kind: 'Dog', cuddlability: '5', rowNumber: 1 },
+    { name: 'Wolfgang', breed: 'Husky', kind: 'Dog', cuddlability: '3', rowNumber: 2 },
+    { name: 'Biscuit', breed: 'Tabby', kind: 'Cat', cuddlability: '4', rowNumber: 3 },
+    { name: 'Mochi', breed: 'Siamese', kind: 'Cat', cuddlability: '2', rowNumber: 4 },
+    { name: 'Pepper', breed: 'Corgi', kind: 'Dog', cuddlability: '5', rowNumber: 5 },
+    { name: 'Nimbus', breed: 'Maine Coon', kind: 'Cat', cuddlability: '4', rowNumber: 6 }
+  ];
+
+  var allData = [];
+  var sortState = { column: null, dir: 1 };
+
+  var statusEl = document.getElementById('status');
+  var statsEl = document.getElementById('stats');
+  var headEl = document.getElementById('table-head');
+  var bodyEl = document.getElementById('table-body');
+  var searchEl = document.getElementById('search');
+  var rowCountEl = document.getElementById('row-count');
+
+  function setStatus(message, type) {
+    statusEl.innerHTML = message
+      ? '<div class="alert alert-' + (type || 'info') + ' mb-0 py-2">' + message + '</div>'
+      : '';
+  }
+
+  function columns(data) {
+    if (data.length === 0) {
+      return [];
+    }
+    return Object.keys(data[0]).filter(function (c) {
+      return c !== 'rowNumber';
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderStats(data) {
+    statsEl.innerHTML = '';
+    if (data.length === 0) {
+      return;
+    }
+    var hasCuddle = columns(data).indexOf('cuddlability') !== -1;
+    var cards = [
+      { label: 'Total rows', value: data.length },
+      { label: 'Dogs', value: Sheetsee.getMatches(data, 'Dog', 'kind').length },
+      { label: 'Cats', value: Sheetsee.getMatches(data, 'Cat', 'kind').length }
+    ];
+    if (hasCuddle) {
+      cards.push({
+        label: 'Avg cuddlability',
+        value: Sheetsee.getColumnAverage(data, 'cuddlability').toFixed(1)
+      });
+    }
+    cards.forEach(function (card) {
+      var col = document.createElement('div');
+      col.className = 'col-6 col-md-3';
+      col.innerHTML =
+        '<div class="card stat-card text-center h-100"><div class="card-body">' +
+        '<div class="display-6">' + escapeHtml(card.value) + '</div>' +
+        '<div class="text-muted small">' + escapeHtml(card.label) + '</div>' +
+        '</div></div>';
+      statsEl.appendChild(col);
+    });
+  }
+
+  function renderTable(data) {
+    var cols = columns(data);
+    headEl.innerHTML = '';
+    bodyEl.innerHTML = '';
+    if (cols.length === 0) {
+      rowCountEl.textContent = '';
+      return;
+    }
+
+    var headRow = document.createElement('tr');
+    cols.forEach(function (col) {
+      var th = document.createElement('th');
+      th.textContent = col;
+      th.setAttribute('role', 'button');
+      th.addEventListener('click', function () {
+        if (sortState.column === col) {
+          sortState.dir *= -1;
+        } else {
+          sortState.column = col;
+          sortState.dir = 1;
+        }
+        update();
+      });
+      headRow.appendChild(th);
+    });
+    headEl.appendChild(headRow);
+
+    data.forEach(function (row) {
+      var tr = document.createElement('tr');
+      cols.forEach(function (col) {
+        var td = document.createElement('td');
+        td.textContent = row[col] !== undefined ? row[col] : '';
+        tr.appendChild(td);
+      });
+      bodyEl.appendChild(tr);
+    });
+
+    rowCountEl.textContent = data.length + ' row' + (data.length === 1 ? '' : 's');
+  }
+
+  function sortData(data) {
+    if (!sortState.column) {
+      return data;
+    }
+    var col = sortState.column;
+    return data.slice().sort(function (a, b) {
+      var av = a[col];
+      var bv = b[col];
+      var an = parseFloat(av);
+      var bn = parseFloat(bv);
+      var bothNumeric = !isNaN(an) && !isNaN(bn);
+      if (bothNumeric) {
+        return (an - bn) * sortState.dir;
+      }
+      return String(av).localeCompare(String(bv)) * sortState.dir;
+    });
+  }
+
+  function update() {
+    var term = searchEl.value.trim();
+    var data = term ? Sheetsee.getKeyword(allData, term) : allData;
+    renderTable(sortData(data));
+  }
+
+  function setData(data) {
+    allData = data;
+    sortState = { column: null, dir: 1 };
+    renderStats(allData);
+    update();
+  }
+
+  document.getElementById('loader-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var key = document.getElementById('sheet-key').value.trim();
+    var sheetName = document.getElementById('sheet-name').value.trim();
+    if (!key) {
+      setStatus('Enter a published spreadsheet key, or explore the sample data below.', 'warning');
+      return;
+    }
+    setStatus('Loading spreadsheet&hellip;', 'info');
+    Sheetsee.loadSheet({ key: key, sheetName: sheetName || undefined })
+      .then(function (data) {
+        if (data.length === 0) {
+          setStatus('The spreadsheet returned no rows.', 'warning');
+          return;
+        }
+        setStatus('Loaded ' + data.length + ' rows from Google Sheets.', 'success');
+        setData(data);
+      })
+      .catch(function (err) {
+        setStatus('Could not load spreadsheet: ' + escapeHtml(err.message) +
+          ' Make sure it is published to the web.', 'danger');
+      });
+  });
+
+  searchEl.addEventListener('input', update);
+
+  // Start with the offline sample so the page is useful without a sheet.
+  setStatus('Showing built-in sample data. Load a published Google Sheet above to use your own.', 'info');
+  setData(SAMPLE);
+})();
+</script>
+</body>
+</html>
