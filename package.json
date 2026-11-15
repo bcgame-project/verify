@@ -1,0 +1,31 @@
+{
+  "name": "verify-games",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static HTML game site with a local dev server",
+  "homepage": "https://kenn2chill0917-star.github.io/verify/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kenn2chill0917-star/verify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kenn2chill0917-star/verify/issues"
+  },
+  "license": "MIT OR Apache-2.0",
+  "keywords": [
+    "games",
+    "static-site",
+    "html5",
+    "dev-server",
+    "github-pages"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node serve.mjs",
+    "dev": "node serve.mjs"
+  },
+  "dependencies": {}
+}

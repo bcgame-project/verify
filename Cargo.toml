@@ -1,0 +1,20 @@
+[package]
+name = "solanagun-quic"
+version = "0.1.0"
+edition = "2021"
+description = "QUIC client for the SolanaGun transaction relay"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+quinn = { version = "0.11", default-features = false, features = ["rustls", "runtime-tokio"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+webpki-roots = "0.26"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+serde_json = "1"
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+anyhow = "1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

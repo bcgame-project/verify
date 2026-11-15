@@ -206,7 +206,7 @@ var app = new Vue({
   },
   watch: {
     'this.results'() {
-      ga('send', 'event', 'Wheel', 'verify', this.server_seed, {metric0: this.client_seed, metric1: this.nonce})
+      ga('send', 'event', 'Wheel', 'verify')
     }
   },
   created () {

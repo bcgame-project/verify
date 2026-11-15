@@ -103,7 +103,7 @@ var app = new Vue({
   },
   watch: {
     'this.numResult'() {
-      ga('send', 'event', 'Dice', 'verify', this.server_seed, {metric0: this.client_seed, metric1: this.nonce})
+      ga('send', 'event', 'Dice', 'verify')
     }
   },
   created () {

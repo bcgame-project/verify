@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="googlebot" content="noindex, nofollow">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"></script>
+  <script type="text/javascript" src="./lib/jquery.js"></script>
   <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css">
   <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+  <script type="text/javascript" src="./lib/crypto-js.js"></script>
   
   <style>
     *, body, button, input, textarea, select {
@@ -219,10 +219,12 @@
     <script>
       // tell the embed parent frame the height of the content
       if (window.parent && window.parent.parent) {
+        // restrict target origin to the embedding frame's origin when known
+        var embedOrigin = document.referrer ? new URL(document.referrer).origin : "*";
         window.parent.parent.postMessage(["resultsFrame", {
           height: document.body.getBoundingClientRect().height,
           slug: "nwu2ffkv"
-        }], "*")
+        }], embedOrigin)
       }
     </script>
 </body>

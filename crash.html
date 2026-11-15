@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script
       type="text/javascript"
-      src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.js"
+      src="./lib/jquery.js"
     ></script>
     <link
       rel="stylesheet"
@@ -22,7 +22,7 @@
     />
     <script
       type="text/javascript"
-      src="//cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"
+      src="./lib/crypto-js.js"
     ></script>
 
     <style>
@@ -387,6 +387,8 @@
     <script>
       // tell the embed parent frame the height of the content
       if (window.parent && window.parent.parent) {
+        // restrict target origin to the embedding frame's origin when known
+        var embedOrigin = document.referrer ? new URL(document.referrer).origin : "*";
         window.parent.parent.postMessage(
           [
             "resultsFrame",
@@ -395,7 +397,7 @@
               slug: "nwu2ffkv",
             },
           ],
-          "*"
+          embedOrigin
         );
       }
     </script>
